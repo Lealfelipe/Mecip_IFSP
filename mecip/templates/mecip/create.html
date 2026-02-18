@@ -1,0 +1,36 @@
+{% extends "global/base.html" %}
+
+{% block content  %}
+    <div class="form-wrapper">
+
+
+        <h2>{{ site_title }}</h2>
+
+        <form 
+        action= '{{ form_action }}'
+        method="POST"
+        enctype="multipart/form-data"
+        >
+        {% csrf_token %}
+
+        <div class="form-content">
+            {% for field in form  %}
+                <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+                </div>
+            {% endfor %}
+
+            
+        </div>
+
+        <div class="form-content">
+            <div class="form-group">
+            <button class="btn" type="submit">Enviar</button>
+            </div>
+        </div>
+
+        </form>
+    </div>
+{% endblock content  %}

@@ -1,0 +1,20 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            {{ type_course.type_name_course }}
+        </h1>
+        <p><b>Nome do Curso:</b> {{ type_course.type_name_course }}</p>
+        <p><b>Duração do Curso em Semestres:</b> {{ type_course.duration }}</p>
+        <p><b>Nível:</b> {{ type_course.type_categorie.categorie }} </p>
+
+        {% if user.is_superuser %}
+            <div class="contact-links">
+                <a class="btn btn-link" href="{% url "mecip:update_type" type_course_id=type_course.id %}">Editar</a>
+            </div>
+            
+        {% endif %}
+
+    </div>
+{% endblock %}

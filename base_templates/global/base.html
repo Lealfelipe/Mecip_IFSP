@@ -1,0 +1,19 @@
+{% load static %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include "global/partials/_head.html" %}
+</head>
+<body>
+    {% if user.is_authenticated %}
+        {% include "global/partials/_header.html" %}
+    {% endif %}
+    
+    {% include "global/partials/_messages.html" %}
+
+
+    <main class="content">
+        {% block content %}{% endblock content %}
+        {% include "global/partials/_pagination.html" %}
+    </main>
+</body>
+</html>

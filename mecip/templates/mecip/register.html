@@ -1,0 +1,36 @@
+{% extends "global/base.html" %}
+
+{% block content  %}
+    <div class="style-login">
+
+        <h2 class="mecip-text">MECIP</h2>
+        <h2>Registro</h2>
+
+        <form 
+        action= '{{ form_action }}'
+        method="POST"
+        >
+        {% csrf_token %}
+
+        <div class="form-content">
+            {% for field in form  %}
+                <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+                </div>
+            {% endfor %}
+
+            
+        </div>
+
+        <div class="form-content">
+            <div class="form-group">
+            <button class="btn" type="submit">Criar</button>
+            <a href=" {% url "mecip:login" %}">Entrar</a>
+            </div>
+        </div>
+
+        </form>
+    </div>
+{% endblock content  %}

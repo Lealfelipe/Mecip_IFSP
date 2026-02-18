@@ -1,0 +1,23 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            {{ campus.first_name }} {{ campus.last_name }} 
+        </h1>
+        <p><b>Nome Campus:</b> {{ campus.campus_name }}</p>
+        <p><b>Cidade:</b> {{ campus.city }}</p>
+        <p><b>Rua:</b> {{ campus.street }}</p>
+        <p><b>Numero:</b> {{ campus.number }}</p>
+        <p><b>Bairro:</b> {{ campus.neighborhood }}</p>
+        <p><b>Numero de Contato:</b> {{ campus.contact_number }}</p>
+        <p><b>E-mail:</b> {{ campus.email_campus }}</p>
+        <p><b>Created Date:</b> {{ campus.created_date }}</p>
+
+        {% if user.is_superuser %}
+            <div class="campus-links">
+                <a class="btn btn-link" href="{% url "mecip:update" campus.id %}">Editar</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}

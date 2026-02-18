@@ -1,0 +1,24 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <caption class="table-caption">
+            <h1>Relatorio:</h1>
+        </caption>
+        <h1 class="single-contact-name">
+            {{ report.course.type_course }}
+        </h1>
+        <p><b>Nome Curso:</b> {{ report.course.type_course }}</p>
+        <p><b>Avaliação:</b> {{ report.assessment }}</p>
+        <p><b>Campus:</b> {{ report.campus.campus_name }}
+        <p><b>Cidade:</b> {{ report.campus.city }}
+
+        {% if user.is_superuser %}
+            <div class="contact-links">
+                <a class="btn btn-link" href="{% url "mecip:update_report" report_id=report.id %}">Editar</a>
+                <a class="btn btn-link" href="{% url "mecip:campus" report.campus.id  %}">Campus</a>
+                <a class="btn btn-link" href="{% url "mecip:course" report.course.id  %}">Curso</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

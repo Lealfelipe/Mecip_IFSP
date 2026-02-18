@@ -1,0 +1,52 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+{% if page_obj %}
+    <div class="responsive_table">
+        <table class="contacts-table">
+            <caption class="table-caption">
+                Tipos de Cursos
+            </caption>
+            <thead>
+                <tr class="table-row table-row-header">
+                    <th class="table-header">Nome do Curso</th>
+                    <th class="table-header">Duração em Semestre</th>
+                    <th class="table-header">Nivel do Curso</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for type_course in page_obj  %}
+                    <tr class="table-row">
+                        <td class="table-cel">
+                            <a class="table-link" 
+                            href="{% url "mecip:type_course" type_course.id %}">
+                                {{ type_course.type_name_course }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:type_course" type_course.id %}">
+                                {{ type_course.duration }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:type_course" type_course.id %}">
+                                {{ type_course.type_categorie.categorie }}
+                            </a>
+                        </td>
+
+                    </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+{% else %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            Nenhum Campus encontrado.
+        </h1>
+    </div>
+{% endif %}
+{% endblock content %}
+    
