@@ -10,8 +10,8 @@ class CampusAdmin(admin.ModelAdmin):
     list_max_show_all = 100
     list_display_links = 'id', 'campus_name',
 
-@admin.register(models.Curso)
-class CursoAdmin(admin.ModelAdmin):
+@admin.register(models.Course)
+class CourseAdmin(admin.ModelAdmin):
     list_display = 'id', 'type_course', 'description', 'campus',
     ordering = '-id',
     search_fields = 'id', 'type_course', 'description', 'campus',
@@ -25,8 +25,8 @@ class CursoAdmin(admin.ModelAdmin):
 
     # list_display += ('campuses',)
 
-@admin.register(models.Relatorio)
-class RelatorioAdmin(admin.ModelAdmin):
+@admin.register(models.Report)
+class ReportAdmin(admin.ModelAdmin):
     list_display = 'id', 'course', 'campus',
     ordering = '-id',
     search_fields = 'id', 'course', 'campus',

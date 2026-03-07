@@ -1,9 +1,9 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.paginator import Paginator
-from mecip.models import Relatorio
+from mecip.models import Report
 
 def index_report(request):
-    report = Relatorio.objects \
+    report = Report.objects \
         .order_by('-id')
     paginator = Paginator(report, 10)
     page_number = request.GET.get("page")
@@ -24,7 +24,7 @@ def index_report(request):
 def report(request, report_id):
 
     single_report = get_object_or_404(
-        Relatorio, pk=report_id,
+        Report, pk=report_id,
     )
 
 

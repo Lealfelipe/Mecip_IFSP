@@ -1,9 +1,9 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.paginator import Paginator
-from mecip.models import Curso
+from mecip.models import Course
 
 def index_course(request):
-    course = Curso.objects \
+    course = Course.objects \
         .order_by('-id')
     paginator = Paginator(course, 10)
     page_number = request.GET.get("page")
@@ -23,7 +23,7 @@ def index_course(request):
 def course(request, course_id):
 
     single_course = get_object_or_404(
-        Curso, pk=course_id,
+        Course, pk=course_id,
     )
     report = single_course.relatorios.first()
 

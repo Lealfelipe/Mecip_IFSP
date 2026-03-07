@@ -14,20 +14,26 @@
         {% csrf_token %}
 
         <div class="form-content">
-            {% for field in form  %}
+            {% for field in form %}
                 <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {{ field.errors }}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    
+                    {% if field.help_text %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {{ field.help_text | safe }}
+                        </small>
+                    {% endif %}
+                    
+                    {{ field.errors }}
                 </div>
             {% endfor %}
-
-            
         </div>
 
         <div class="form-content">
-            <div class="form-group">
-            <button class="btn" type="submit">Enviar</button>
+            <div class="contact-links">
+                <button class="btn" type="submit">Enviar</button>
+                <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:index" %}'">Voltar</button>
             </div>
         </div>
 

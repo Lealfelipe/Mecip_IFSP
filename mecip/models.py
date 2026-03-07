@@ -31,7 +31,7 @@ class Type_Course(models.Model):
         return f'{self.type_name_course}'
     
 
-class Curso(models.Model):
+class Course(models.Model):
     type_course = models.ForeignKey(Type_Course, on_delete=models.CASCADE, related_name='nome_curso')
     description = models.TextField()
     created_date = models.DateTimeField(default=timezone.now)
@@ -44,17 +44,42 @@ class Curso(models.Model):
         return f'{self.type_course.type_name_course}'   
    
     
-class Relatorio(models.Model):
-    course = models.ForeignKey(Curso, on_delete=models.CASCADE, related_name='relatorios')
+class Report(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='relatorios')
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE)
     created_date = models.DateTimeField(default=timezone.now)
     assessment = models.TextField()
+    current_team = models.ForeignKey('Team', on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
 
     class Meta:
         unique_together = ('course', 'campus')
 
     def __str__(self) -> str:
         return f'{self.course} {self.campus}'
+    
+class Team(models.Model):
+    team_name = models.CharField(max_length=250)
+    created_date = models.DateTimeField(default=timezone.now)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE)
+    users = models.ManyToManyField('auth.User', related_name='teams')
+
+
+
+    def __str__(self) -> str:
+        return f'{self.team_name}'
+
+
+class ReportTeamHistory(models.Model):
+    report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name='team_history')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='assignments')
+    start_date = models.DateTimeField(default=timezone.now)
+    end_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def __str__(self) -> str:
+        return f'{self.report} -> {self.team} ({self.start_date.isoformat()})'
     
 
  

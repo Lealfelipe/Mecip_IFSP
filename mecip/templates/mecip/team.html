@@ -1,0 +1,22 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            {{ team.team_name }}
+        </h1>
+        <p><b>Nome Equipe:</b> {{ team.team_name }}</p>
+        <p><b>Campus:</b> {{ team.campus }}</p>
+        <p><b>Cidade:</b> {{ team.campus.city }}</p>
+        <p><b>Created Date:</b> {{ team.created_date }}</p>
+
+        {% if user.is_superuser %}
+            <div class="contact-links">
+                <button type="submit" class="btn" onclick="window.location='{% url "mecip:add_user_to_team" team.id %}'">Gerenciar Usuários</button>
+                <button type="submit" class="btn" onclick="window.location='{% url "mecip:update_team" team.id %}'">Editar</button>
+                <button type="submit" class="btn btn-back" onclick="window.location='{% url "mecip:index_team" %}'">Voltar</button>
+            </div>
+            
+        {% endif %}
+    </div>
+{% endblock content %}

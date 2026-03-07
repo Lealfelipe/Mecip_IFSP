@@ -1,0 +1,28 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2>Remover Usuário da Equipe: {{ team.team_name }}</h2>                   
+            <h4>Membros da Equipe</h4>
+            {% if team.users.all %}
+                <ul class="list-group">
+                    {% for user in team.users.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ user.get_full_name|default:user.username }}
+                            <form method="post" action="{% url 'mecip:remove_user_from_team' team.id user.id %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-delete btn-sm btn-danger">Remover</button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <button type="button" class="btn btn-back" onclick="window.location='{% url 'mecip:team' team.id %}'">Voltar</button>
+            {% else %}
+                <p class="text-muted">Esta equipe não possui membros.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

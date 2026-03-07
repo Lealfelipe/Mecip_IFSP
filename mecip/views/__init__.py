@@ -7,3 +7,5 @@ from .report_view import *
 from .report_form import *
 from .type_course_form import *
 from .type_course_view import *
+from .team_form import *
+from .team_view import *

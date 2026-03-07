@@ -310,6 +310,7 @@
     border: none;
     width: var(--default-width-btn);
     padding: 1rem 2rem;
+    margin: 1rem 0;
     border-radius: var(--default-border-radius);
     align-items: center;
     cursor: pointer;
@@ -334,6 +335,10 @@
   
   .btn-delete {
     background: tomato;
+  }
+
+  .btn-back {
+    background: #6c757d;
   }
   
   .btn:hover {

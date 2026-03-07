@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
 from mecip.forms import CampusForm, CourseForm
 from django.urls import reverse
-from mecip.models import Campus, Curso
+from mecip.models import Campus, Course
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
 
@@ -50,7 +50,7 @@ def create_course(request):
 
 @user_passes_test(is_admin)
 def update_course(request, course_id):
-    course = get_object_or_404(Curso, pk= course_id)
+    course = get_object_or_404(Course, pk= course_id)
     form_action = reverse('mecip:update_course', args=(course_id,))
 
     if request.method == 'POST':

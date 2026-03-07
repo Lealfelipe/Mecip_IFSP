@@ -1,0 +1,52 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2>Adicionar Usuário à Equipe: {{ team.team_name }}</h2>
+            
+            {% if available_users %}
+                <form method="POST" class="mt-4">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="user_id">Selecione um Usuário:</label>
+                        <select name="user_id" id="user_id" class="form-control" required>
+                            <option value="">-- Escolha um usuário --</option>
+                            {% for user in available_users %}
+                                <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="contact-links">
+                        <button type="submit" class="btn btn-primary">Adicionar à Equipe</button>
+                        <button type="button" class="btn btn-delete" onclick="window.location='{% url 'mecip:remove_user_from_team' team.id user.id %}'">Remover Usuário</button>
+                        <button type="reset" class="btn btn-secondary">Limpar</button>
+                        <button type="button" class="btn btn-back" onclick="window.location='{% url 'mecip:team' team.id %}'">Voltar</button>
+                    </div>
+                </form>
+            {% else %}
+                <div class="alert alert-info mt-4">
+                    Todos os usuários já fazem parte desta equipe.
+                </div>
+                <a href="{% url 'mecip:update_team' team.id %}" class="btn btn-secondary">Voltar</a>
+            {% endif %}
+            
+            <hr>
+                <h4 class="mt-4">Membros Atuais da Equipe</h4>
+                {% if team.users.all %}
+                    <ul class="list-group">
+                        {% for user in team.users.all %}
+                            <li class="list-group-item">{{ user.get_full_name|default:user.username }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Esta equipe não possui membros.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

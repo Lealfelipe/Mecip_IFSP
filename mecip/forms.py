@@ -1,5 +1,5 @@
 from typing import Any
-from mecip.models import Campus, Curso, Relatorio, Type_Course
+from mecip.models import Campus, Course, Report, Type_Course, Team
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -31,7 +31,7 @@ class CampusForm(forms.ModelForm):
         city = cleaned_data.get('city')
 
         if campus_name == city:
-            msg = ValidationError('Nome não pode ser igual ao sobrenome')
+            msg = ValidationError('Nome do Campus não pode ser igual ao nome da Cidade')
             self.add_error(
                 'campus_name',
                 msg
@@ -59,7 +59,7 @@ class CampusForm(forms.ModelForm):
     
 class CourseForm(forms.ModelForm):
     class Meta:
-        model = Curso
+        model = Course
         fields = (
             'type_course', 'description', 'campus'
         )
@@ -102,7 +102,7 @@ class CourseForm(forms.ModelForm):
         type_course = cleaned_data.get('type_course')
         campus = cleaned_data.get('campus')
 
-        if Curso.objects.filter(type_course=type_course, campus=campus).exclude(pk=self.instance.pk).exists():
+        if Course.objects.filter(type_course=type_course, campus=campus).exclude(pk=self.instance.pk).exists():
             raise ValidationError('Curso já cadastrado para esse Campus existe.')
 
         return cleaned_data
@@ -170,7 +170,7 @@ class CustomAuthenticationForm(AuthenticationForm):
 class ReportForm(forms.ModelForm):
 
     class Meta:
-        model = Relatorio
+        model = Report
         fields = (
             'course', 'campus', 'assessment'
         )
@@ -197,7 +197,7 @@ class ReportForm(forms.ModelForm):
         course = cleaned_data.get('course')
         campus = cleaned_data.get('campus')
 
-        if Relatorio.objects.filter(course=course, campus=campus).exclude(pk=self.instance.pk).exists():
+        if Report.objects.filter(course=course, campus=campus).exclude(pk=self.instance.pk).exists():
             raise ValidationError('Relatório para este curso e campus já existe.')
 
         return cleaned_data
@@ -242,3 +242,55 @@ class TypeCourseForm(forms.ModelForm):
             )
 
         return type_name_course
+
+
+class TeamForm(forms.ModelForm):
+    class Meta:
+        model = Team
+        fields = (
+            'team_name', 'campus', 'users'
+        )
+        labels = {
+            'team_name': 'Nome da Equipe',
+            'campus': 'Campus Pertencente',
+            'users': 'Membros da Equipe',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Desabilitar o campo users para edição (apenas visualização)
+        self.fields['users'].disabled = True
+        self.fields['users'].help_text = 'Use a opção "Gerenciar Usuários" para gerenciar membros da equipe'
+
+    def clean(self):
+        cleaned_data = self.cleaned_data
+        team_name = cleaned_data.get('team_name')
+        campus = cleaned_data.get('campus')
+
+        if team_name == campus:
+            msg = ValidationError('Nome da equipe não pode ter o mesmo nome do Campus')
+            self.add_error(
+                'team_name',
+                msg
+            )
+        return super().clean()
+
+    def clean_team_name(self):
+        team_name = self.cleaned_data.get('team_name')
+        campus = self.cleaned_data.get('campus')
+
+        if not team_name:
+            return team_name
+
+        query_team_name = Team.objects.filter(team_name=team_name)
+        if campus:
+            query_team_name = query_team_name.filter(campus=campus)
+
+        current_pk = getattr(self.instance, 'pk', None)
+        if query_team_name.exclude(pk=current_pk).exists():
+            self.add_error(
+                'team_name',
+                ValidationError('Já existe uma equipe com este nome neste campus', code='invalid')
+            )
+
+        return team_name

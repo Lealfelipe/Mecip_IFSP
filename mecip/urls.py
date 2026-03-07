@@ -36,5 +36,12 @@ urlpatterns = [
     path('curso/<int:course_id>/<int:campus_id>/criar/relatorio', views.create_report_params, name='create_report_params'),
     path('relatorio/<int:report_id>/editar', views.update_report, name='update_report'),
 
+    # Criar Equipe
+    path('equipe/', views.index_team, name='index_team'),
+    path('equipe/<int:team_id>/', views.team, name='team'),
+    path('equipe/criar/', views.create_team, name='create_team'),
+    path('equipe/<int:team_id>/editar', views.update_team, name='update_team'),
+    path('equipe/<int:team_id>/adicionar-usuario/', views.add_user_to_team, name='add_user_to_team'),
+    path('equipe/<int:team_id>/remover-usuario/<int:user_id>/', views.remove_user_from_team, name='remove_user_from_team'),
 
 ]
