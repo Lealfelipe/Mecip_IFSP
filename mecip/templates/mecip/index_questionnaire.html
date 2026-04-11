@@ -1,0 +1,67 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+{% if page_obj %}
+    <div class="responsive_table">
+        <table class="contacts-table">
+            <caption class="table-caption">
+                Questionários
+            </caption>
+            <thead>
+                <tr class="table-row table-row-header">
+                    <th class="table-header">Nome</th>
+                    <th class="table-header">Campus</th>
+                    <th class="table-header">Data de Criação</th>
+                    <th class="table-header">Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for questionnaire in page_obj  %}
+                    <tr class="table-row">
+                        <td class="table-cel">
+                            <a class="table-link" 
+                            href="{% url "mecip:questionnaire" questionnaire.id %}">
+                                {{ questionnaire.name }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:questionnaire" questionnaire.id %}">
+                                {{ questionnaire.campus.campus_name|default:"---" }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:questionnaire" questionnaire.id %}">
+                                {{ questionnaire.created_date|date:"d/m/Y" }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:questionnaire" questionnaire.id %}">
+                                {% if questionnaire.active %}
+                                    <span style="color: green;">Ativo</span>
+                                {% else %}
+                                    <span style="color: red;">Inativo</span>
+                                {% endif %}
+                            </a>
+                        </td>
+
+                    </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+{% else %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            Nenhum questionário encontrado.
+        </h1>
+        {% if user.is_superuser %}
+            <div class="contact-links">
+                <a class="btn" href="{% url "mecip:create_questionnaire" %}">Criar Questionário</a>
+            </div>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock content %}

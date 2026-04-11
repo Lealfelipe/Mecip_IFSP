@@ -22,6 +22,11 @@
                     Equipes
                 </a>
             </li>
+            <li class="menu-item">
+                <a href="{% url 'mecip:index_questionnaire' %}" class="menu-link">
+                    Questionários
+                </a>
+            </li>
             {% if user.is_superuser %}
                 <li class="menu-item">
                     <a href="{% url 'mecip:create' %}" class="menu-link">
@@ -41,6 +46,11 @@
                 <li class="menu-item">
                     <a href="{% url 'mecip:create_team' %}" class="menu-link">
                         Criar Equipe
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'mecip:create_questionnaire' %}" class="menu-link">
+                        Criar Questionário
                     </a>
                 </li>
             {% endif %}

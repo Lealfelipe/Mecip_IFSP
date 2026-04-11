@@ -51,3 +51,34 @@ class Type_Course_Admin(admin.ModelAdmin):
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = 'id', 'type_name_course', 'duration', 'type_categorie',
+
+
+@admin.register(models.Questionnaire)
+class QuestionnaireAdmin(admin.ModelAdmin):
+    list_display = 'id', 'name', 'campus', 'active',
+    ordering = '-id',
+    search_fields = 'id', 'name',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'name',
+
+
+@admin.register(models.Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = 'id', 'questionnaire', 'text', 'field_type', 'required', 'order',
+    ordering = '-id',
+    search_fields = 'id', 'text', 'questionnaire',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'text',
+
+
+@admin.register(models.ReportQuestionAnswer)
+class ReportQuestionAnswerAdmin(admin.ModelAdmin):
+    list_display = 'id', 'report', 'question', 'answer',
+    ordering = '-id',
+    search_fields = 'id', 'report__course__type_course', 'question__text',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'report',
+

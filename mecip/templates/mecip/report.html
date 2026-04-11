@@ -1,4 +1,4 @@
-{% extends "global/base.html" %}
+﻿{% extends "global/base.html" %}
 
 {% block content %}
     <div class="single-contact">
@@ -9,16 +9,58 @@
             {{ report.course.type_course }}
         </h1>
         <p><b>Nome Curso:</b> {{ report.course.type_course }}</p>
+        <p><b>Campus:</b> {{ report.campus.campus_name }}</p>
+        <p><b>Cidade:</b> {{ report.campus.city }}</p>
+        <p><b>Equipe Atribuída:</b>
+            {% if report.assigned_team %}
+                {{ report.assigned_team.team_name }}
+            {% else %}
+                Nenhuma
+            {% endif %}
+        </p>
+        <p><b>Usuário Atribuído:</b>
+            {% if report.assigned_user %}
+                {{ report.assigned_user.get_full_name }}
+            {% else %}
+                Nenhum
+            {% endif %}
+        </p>
+        <p><b>Prazo:</b> {{ report.due_date }}</p>
+        <p><b>Status:</b> {{ report.status }}</p>
+        <p><b>Questionário:</b>
+            {% if report.questionnaire %}
+                {{ report.questionnaire.name }}
+            {% else %}
+                Nenhum questionátiorio associado
+            {% endif %}
+        </p>
+        <p><b>Observações:</b> {{ report.notes }}</p>
         <p><b>Avaliação:</b> {{ report.assessment }}</p>
-        <p><b>Campus:</b> {{ report.campus.campus_name }}
-        <p><b>Cidade:</b> {{ report.campus.city }}
+
+        <div class="contact-links">
+            {% if can_assign %}
+                <button class="btn btn-assign" onclick="window.location='{% url 'mecip:assign_report' report_id=report.id %}'">Atribuir a mim</button>
+            {% endif %}
+
+            {% if report.questionnaire and user.is_authenticated %}
+                {% if user.is_superuser %}
+                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
+                {% elif report.assigned_team and user in report.assigned_team.users.all %}
+                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
+                {% endif %}                
+            {% endif %}
+            <button class="btn btn-back" onclick="window.location='{% url 'mecip:index_report' %}'">Voltar</button>
+        </div>
+
 
         {% if user.is_superuser %}
             <div class="contact-links">
-                <a class="btn btn-link" href="{% url "mecip:update_report" report_id=report.id %}">Editar</a>
-                <a class="btn btn-link" href="{% url "mecip:campus" report.campus.id  %}">Campus</a>
-                <a class="btn btn-link" href="{% url "mecip:course" report.course.id  %}">Curso</a>
+                <button class="btn" onclick="window.location='{% url 'mecip:update_report' report_id=report.id %}'">Editar</button>
+                <button class="btn" onclick="window.location='{% url 'mecip:campus' report.campus.id %}'">Campus</button>
+                <button class="btn" onclick="window.location='{% url 'mecip:course' report.course.id  %}'">Curso</button>
             </div>
         {% endif %}
+
+
     </div>
 {% endblock %}

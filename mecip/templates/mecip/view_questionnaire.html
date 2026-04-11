@@ -1,0 +1,34 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <h2>Questionário: {{ report.questionnaire.name }}</h2>
+        <p><strong>Relatório:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
+        <p><strong>Status:</strong> {{ report.status }}</p>
+        <div class="box">
+            <h3>Perguntas e respostas</h3>
+            <ul>
+            {% for answer in answers %}
+                <li><b>{{ answer.question.text }}</b><br>
+                    {{ answer.answer|default:'(ainda não respondido)' }}
+                </li>
+            {% empty %}
+                <li>Nenhuma pergunta registrada.</li>
+            {% endfor %}
+            </ul>
+        </div>
+
+        <div class="contact-links">
+            {% if can_answer %}
+            <div class="contact-links">
+                <button class="btn" onclick="window.location='{% url 'mecip:answer_questionnaire' report_id=report.id %}'">Responder Questionário</button>
+            </div>
+            {% endif %}
+            <div class="contact-links">
+                {% comment %} <a class="btn btn-back" href="{% url 'mecip:report' report_id=report.id %}">Voltar</a> {% endcomment %}
+                <button class="btn btn-back" onclick="window.location='{% url 'mecip:report' report_id=report.id %}'">Voltar</button>
+            </div>
+        </div>
+        
+    </div>
+{% endblock %}

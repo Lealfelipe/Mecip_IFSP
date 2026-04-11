@@ -1,0 +1,71 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="form-wrapper">
+        <h2>{{ site_title }}</h2>
+        <p>Questionário: <strong>{{ questionnaire.name }}</strong></p>
+
+        <form 
+        action='{{ form_action }}'
+        method="POST"
+        enctype="multipart/form-data"
+        >
+        {% csrf_token %}
+
+        <div class="form-content">
+            {% for field in form %}
+                {% if field.field.disabled %}
+                    <!-- Pré-seleciona o questionário sem mostrar o campo -->
+                    {{ field }}
+                {% else %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        
+                        {% if field.name == 'field_type' %}
+                            {{ field }}
+                            <small class="form-text text-muted d-block mt-2">
+                                Escolha o tipo de pergunta que será exibida no formulário
+                            </small>
+                        {% elif field.name == 'choices' %}
+                            <textarea id="{{ field.id_for_label }}" name="{{ field.name }}" class="form-control" rows="4">{{ field.value|default:'' }}</textarea>
+                            <small class="form-text text-muted d-block mt-2">
+                                Para perguntas de múltipla escolha, separe as opções com vírgula. Ex: Opção 1,Opção 2,Opção 3
+                            </small>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                        
+                        {% if field.help_text %}
+                            <small class="form-text text-muted d-block mt-2">
+                                {{ field.help_text | safe }}
+                            </small>
+                        {% endif %}
+                        
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="form-content">
+            <div class="contact-links">
+                <button class="btn" type="submit">Enviar</button>
+                <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:update_questionnaire" questionnaire.id %}'">Voltar</button>
+            </div>
+        </div>
+
+        </form>
+    </div>
+
+    <!-- Informações sobre tipos de pergunta -->
+    <div style="margin-top: 40px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+        <h3>Tipos de Perguntas Disponíveis</h3>
+        <ul>
+            <li><strong>Texto:</strong> Campo de texto simples (uma linha)</li>
+            <li><strong>Texto Longo:</strong> Área de texto (múltiplas linhas)</li>
+            <li><strong>Sim/Não:</strong> Opções binárias (Sim ou Não)</li>
+            <li><strong>Múltipla Escolha:</strong> Várias opções para selecionar uma</li>
+        </ul>
+    </div>
+
+{% endblock content %}

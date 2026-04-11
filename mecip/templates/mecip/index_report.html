@@ -2,6 +2,9 @@
 
 {% block content %}
 {% if page_obj %}
+    <div class="contact-actions" style="margin-bottom: 1rem;">
+        <button class="btn" onclick="window.location='{% url 'mecip:dashboard' %}'">Ver Dashboard</button>
+    </div>
     <div class="responsive_table">
         <table class="contacts-table">
             <caption class="table-caption">
@@ -12,6 +15,9 @@
                     <th class="table-header">Nome Curso</th>
                     <th class="table-header">Campus</th>
                     <th class="table-header">Cidade</th>
+                    <th class="table-header">Equipe Atribuída</th>
+                    <th class="table-header">Usuário Atribuído</th>
+                    <th class="table-header">Status</th>
                 </tr>
             </thead>
 
@@ -33,6 +39,22 @@
                                 {{ report.campus.city }}
                             </a>
                         </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:report" report.id %}">
+                                {{ report.assigned_team.team_name}}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:report" report.id %}">
+                                {{ report.assigned_user.get_full_name}}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url "mecip:report" report.id %}">
+                                {{ report.status }}
+                            </a>
+                        </td>
+                        
                     </tr>
                 {% endfor %}
             </tbody>

@@ -37,7 +37,7 @@ def login_view(request):
             messages.success(request, 'Logado com sucesso!')
             auth.login(request, user)
             print(user)
-            return redirect('mecip:index')
+            return redirect('mecip:connected_index')
         messages.error(request, 'Login inválido')
 
     return render(

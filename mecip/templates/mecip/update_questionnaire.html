@@ -1,0 +1,106 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="form-wrapper">
+        <h2>{{ site_title }}</h2>
+
+        <form 
+        action='{{ form_action }}'
+        method="POST"
+        enctype="multipart/form-data"
+        >
+        {% csrf_token %}
+
+        <div class="form-content">
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    
+                    {% if field.help_text %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {{ field.help_text | safe }}
+                        </small>
+                    {% endif %}
+                    
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="contact-links">
+            <button class="btn" type="submit">Enviar</button>
+            <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:questionnaire" questionnaire.id %}'">Voltar</button>
+        </div>
+
+        </form>
+
+        
+    </div>
+
+    {% if questionnaire.pk %}
+        <div style="margin-top: 40px;">
+            {% comment %} <h3>Questões do Questionário</h3> {% endcomment %}
+            
+            {% if questions %}
+                <div class="responsive_table">
+                    <table class="contacts-table">
+                        <caption class="table-caption">
+                            {% if user.is_superuser %}
+                                <button class="btn" onclick="window.location='{% url "mecip:create_question" questionnaire.id %}'">Criar Questão</button>
+                            {% endif %}
+                        </caption>
+                        <thead>
+                            <tr class="table-row table-row-header">
+                                <th class="table-title" colspan="5">Questões do Questionário</th>
+                            </tr>
+                            <tr class="table-row table-row-header">
+                                <th class="table-header">Ordem</th>
+                                <th class="table-header">Pergunta</th>
+                                <th class="table-header">Tipo</th>
+                                <th class="table-header">Obrigatória</th>
+                                <th class="table-header">Ações</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for question in questions %}
+                                <tr class="table-row">
+                                    <td class="table-cel">{{ question.order }}</td>
+                                    <td class="table-cel">{{ question.text|truncatewords:10 }}</td>
+                                    <td class="table-cel">{{ question.get_field_type_display }}</td>
+                                    <td class="table-cel">
+                                        {% if question.required %}
+                                            <span style="color: green;">Sim</span>
+                                        {% else %}
+                                            <span style="color: red;">Não</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="table-cel">
+                                        <button class="btn btn-link" 
+                                        onclick="window.location='{% url "mecip:update_question" questionnaire.id question.id %}'">
+                                            Editar
+                                        </button>
+                                        <button class="btn btn-delete" 
+                                        onclick="window.location='{% url "mecip:delete_question" questionnaire.id question.id %}'"
+                                        onclick="return confirm('Tem certeza?')">
+                                            Deletar
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Nenhuma questão cadastrada.</p>
+                {% if user.is_superuser %}
+                    <div class="contact-links">
+                        <a class="btn" href="{% url "mecip:create_question" questionnaire.id %}">+ Questão</a>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+
+{% endblock content %}

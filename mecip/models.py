@@ -44,12 +44,77 @@ class Course(models.Model):
         return f'{self.type_course.type_name_course}'   
    
     
+class Questionnaire(models.Model):
+    name = models.CharField(max_length=250)
+    description = models.TextField(blank=True)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, null=True, blank=True)
+    created_date = models.DateTimeField(default=timezone.now)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Question(models.Model):
+    QUESTION_TYPES = [
+        ('text', 'Texto'),
+        ('textarea', 'Texto longo'),
+        ('boolean', 'Sim/Não'),
+        ('choice', 'Múltipla escolha'),
+    ]
+
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    field_type = models.CharField(max_length=25, choices=QUESTION_TYPES, default='text')
+    required = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    choices = models.TextField(blank=True, help_text='Separe opções com vírgula se for múltipla escolha (choice)')
+
+    class Meta:
+        ordering = ['questionnaire', 'order']
+
+    def __str__(self) -> str:
+        return f'{self.order} - {self.text[:50]}'
+
+
+class ReportQuestionAnswer(models.Model):
+    report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    answer = models.TextField(blank=True, null=True)
+    created_date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('report', 'question')
+
+    def __str__(self) -> str:
+        return f'{self.report} - {self.question.text[:40]}'
+
+
 class Report(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='relatorios')
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE)
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
     created_date = models.DateTimeField(default=timezone.now)
     assessment = models.TextField()
-    current_team = models.ForeignKey('Team', on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
+    assigned_team = models.ForeignKey('Team', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_reports')
+    assigned_user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_reports')
+    due_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    
+    STATUS_CHOICES = [
+        ('Pendente', 'Pendente'),
+        ('Em andamento', 'Em andamento'),
+        ('Bloqueado', 'Bloqueado'),
+        ('Pendente ajuste', 'Pendente ajuste'),
+        ('Pendente avaliação', 'Pendente avaliação'),
+        ('Aprovado', 'Aprovado'),
+        ('Reprovado', 'Reprovado'),
+    ]
+    
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pendente')
 
     class Meta:
         unique_together = ('course', 'campus')

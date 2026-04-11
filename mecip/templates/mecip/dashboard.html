@@ -1,0 +1,119 @@
+{% extends "global/base.html" %}
+{% load static %}
+
+{% block content %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'mecip/js/dashboard.js' %}"></script>
+
+
+    <section class="dashboard-header">
+        <h1 class="dashboard-title">Painel de Relatórios</h1>
+    </section>
+
+    <section class="dashboard-filters dashboard-filters-container">
+        <form method="get" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <label>
+                Campus
+                <select name="campus">
+                    <option value="">Todos os campi</option>
+                    {% for campus in campuses %}
+                        <option value="{{ campus.id }}" {% if selected_campus == campus.id|stringformat:"s" %}selected{% endif %}>
+                            {{ campus.campus_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                Equipe
+                <select name="team">
+                    <option value="">Todas as equipes</option>
+                    {% for team in teams %}
+                        <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>
+                            {{ team.team_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <button class="btn-filter btn-filter-apply" type="submit">Aplicar filtro</button>
+            <a class="btn-filter btn-filter-clear" href="{% url 'mecip:dashboard' %}">Limpar filtros</a>
+        </form>
+    </section>
+
+    {{ status_labels|json_script:"status-labels" }}
+    {{ status_data|json_script:"status-data" }}
+
+    <section class="dashboard-kpis">
+        <div class="chart-container">
+            <div class="card">
+                <h2>Distribuição por Status</h2>
+                <canvas 
+                    id="statusChart" 
+                    width="300" 
+                    height="300">
+                </canvas>
+            </div>
+        </div>
+
+        <div class="cards-container">
+            <a href="?{% if selected_campus %}&campus={{ selected_campus }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="card-link">
+                <div class="card {% if not selected_status %}card-selected{% endif %}">
+                    <h2>Todos</h2>
+                    <p>{{ total_reports }}</p>
+                </div>
+            </a>
+            {% for item in status_counts %}
+                <a href="?status={{ item.status }}{% if selected_campus %}&campus={{ selected_campus }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="card-link">
+                    <div class="card {% if selected_status == item.status %}card-selected{% endif %}">
+                        <h2>{{ item.status }}</h2>
+                        <p>{{ item.count }}</p>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="card">
+                    <h2>Sem relatórios</h2>
+                    <p>0</p>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="dashboard-table">
+        <div class="responsive_table">
+            <table class="contacts-table">
+                <caption class="table-caption">{% if selected_status %}Relatórios: {{ selected_status }}{% else %}Relatórios: Todos{% endif %}</caption>
+                <thead>
+                    <tr class="table-row table-row-header">
+                        <th class="table-header">Curso</th>
+                        <th class="table-header">Campus</th>
+                        <th class="table-header">Cidade Campus</th>
+                        <th class="table-header">Equipe</th>
+                        <th class="table-header">Status</th>
+                        <th class="table-header">Criado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                        <tr class="table-row">
+                            <td class="table-cel">
+                                <a class="table-link" href="{% url 'mecip:report' report.id %}">{{ report.course.type_course }}</a>
+                            </td>
+                            <td class="table-cel">{{ report.campus.campus_name }}</td>
+                            <td class="table-cel">{{ report.campus.city }}</td>
+                            <td class="table-cel">{{ report.assigned_team.team_name}}</td>
+                            <td class="table-cel">{{ report.status }}</td>
+                            <td class="table-cel">{{ report.created_date|date:'d/m/Y' }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr class="table-row">
+                            <td class="table-cel" colspan="6">Nenhum relatório encontrado para o filtro atual.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    
+{% endblock content %}

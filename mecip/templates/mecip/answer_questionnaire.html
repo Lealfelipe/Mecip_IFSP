@@ -1,0 +1,25 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="form-wrapper">
+        <h2>Responder Questionário: {{ report.questionnaire.name }}</h2>
+        <p><strong>Relatório:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
+        <form method="post" action="">
+            {% csrf_token %}
+            <div class="form-content">
+                {% for answer in answers %}
+                    <div class="form-group">
+                        <label for="id_answer_{{ answer.id }}">{{ answer.question.text }}{% if answer.question.required %} *{% endif %}</label>
+                        <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer }}</textarea>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="form-content">
+                <div class="contact-links">
+                    <button class="btn" type="submit">Salvar respostas</button>
+                    <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:view_questionnaire" report_id=report.id %}'">Voltar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+{% endblock %}

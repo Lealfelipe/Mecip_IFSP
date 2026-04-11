@@ -9,3 +9,5 @@ from .type_course_form import *
 from .type_course_view import *
 from .team_form import *
 from .team_view import *
+from .questionnaire_form import *
+from .questionnaire_view import *

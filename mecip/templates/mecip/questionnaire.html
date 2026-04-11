@@ -1,0 +1,69 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="single-contact">
+        <h1 class="single-contact-name">
+            {{ questionnaire.name }}
+        </h1>
+        <p><b>Nome:</b> {{ questionnaire.name }}</p>
+        <p><b>Campus:</b> {{ questionnaire.campus.campus_name|default:"---" }}</p>
+        <p><b>Descrição:</b> {{ questionnaire.description|default:"---" }}</p>
+        <p><b>Data de Criação:</b> {{ questionnaire.created_date|date:"d/m/Y H:i" }}</p>
+        <p><b>Status:</b> 
+            {% if questionnaire.active %}
+                <span style="color: green;">Ativo</span>
+            {% else %}
+                <span style="color: red;">Inativo</span>
+            {% endif %}
+        </p>
+
+        {% if user.is_superuser %}
+            <div class="contact-links">
+                <button class="btn btn-link" onclick="window.location='{% url "mecip:update_questionnaire" questionnaire_id=questionnaire.id %}'">Editar</button>
+                <button class="btn btn-back" onclick="window.location='{% url "mecip:index_questionnaire" %}'">Voltar</button>
+            </div>
+        {% endif %}
+
+    </div>
+
+    {% if questions %}
+        <div class="responsive_table">
+            <table class="contacts-table">
+                <caption class="table-caption">
+                    Questões
+                </caption>
+                <thead>
+                    <tr class="table-row table-row-header">
+                        <th class="table-header">Ordem</th>
+                        <th class="table-header">Pergunta</th>
+                        <th class="table-header">Tipo</th>
+                        <th class="table-header">Obrigatória</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for question in questions %}
+                        <tr class="table-row">
+                            <td class="table-cel">{{ question.order }}</td>
+                            <td class="table-cel">
+                                <a class="table-link" 
+                                href="{% url "mecip:update_question" questionnaire.id question.id %}">
+                                    {{ question.text|truncatewords:10 }}
+                                </a>
+                            </td>
+                            <td class="table-cel">{{ question.get_field_type_display }}</td>
+                            <td class="table-cel">
+                                {% if question.required %}
+                                    <span style="color: green;">Sim</span>
+                                {% else %}
+                                    <span style="color: red;">Não</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+{% endblock %}

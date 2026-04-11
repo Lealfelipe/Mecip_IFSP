@@ -1,5 +1,5 @@
 from typing import Any
-from mecip.models import Campus, Course, Report, Type_Course, Team
+from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, Question, ReportQuestionAnswer
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -172,13 +172,25 @@ class ReportForm(forms.ModelForm):
     class Meta:
         model = Report
         fields = (
-            'course', 'campus', 'assessment'
+            'course', 'campus', 'questionnaire', 'assessment', 'assigned_team', 'assigned_user', 'due_date', 'notes', 'status'
         )
         labels = {
             'course': 'Nome do Curso',
             'campus': 'Campus Pertencente',
+            'questionnaire': 'Questionário',
             'assessment': 'Avaliação',
+            'assigned_team': 'Equipe Atribuída',
+            'assigned_user': 'Usuário Atribuído',
+            'due_date': 'Prazo',
+            'notes': 'Observações',
+            'status': 'Status',
         }
+
+    questionnaire = forms.ModelChoiceField(
+        queryset=Questionnaire.objects.filter(active=True),
+        required=False,
+        label='Questionário'
+    )
 
     assessment = forms.CharField(
         required=False,
@@ -201,7 +213,43 @@ class ReportForm(forms.ModelForm):
             raise ValidationError('Relatório para este curso e campus já existe.')
 
         return cleaned_data
-    
+
+
+class QuestionnaireForm(forms.ModelForm):
+    class Meta:
+        model = Questionnaire
+        fields = ('name', 'description', 'campus', 'active')
+        labels = {
+            'name': 'Nome do Questionário',
+            'description': 'Descrição',
+            'campus': 'Campus',
+            'active': 'Ativo',
+        }
+
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ('questionnaire', 'text', 'field_type', 'required', 'order', 'choices')
+        labels = {
+            'questionnaire': 'Questionário',
+            'text': 'Pergunta',
+            'field_type': 'Tipo',
+            'required': 'Obrigatória',
+            'order': 'Ordem',
+            'choices': 'Opções (se múltipla escolha)',
+        }
+
+
+class ReportQuestionAnswerForm(forms.ModelForm):
+    class Meta:
+        model = ReportQuestionAnswer
+        fields = ('answer',)
+        labels = {'answer': 'Resposta'}
+        widgets = {
+            'answer': forms.Textarea(attrs={'rows': 3}),
+        }
+
 
 class TypeCourseForm(forms.ModelForm):
     class Meta:
@@ -248,19 +296,19 @@ class TeamForm(forms.ModelForm):
     class Meta:
         model = Team
         fields = (
-            'team_name', 'campus', 'users'
+            'team_name', 'campus'
         )
         labels = {
             'team_name': 'Nome da Equipe',
             'campus': 'Campus Pertencente',
-            'users': 'Membros da Equipe',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Desabilitar o campo users para edição (apenas visualização)
-        self.fields['users'].disabled = True
-        self.fields['users'].help_text = 'Use a opção "Gerenciar Usuários" para gerenciar membros da equipe'
+        # Caso usem campos extras em outro form, mantenha sem erro
+        if 'users' in self.fields:
+            self.fields['users'].disabled = True
+            self.fields['users'].help_text = 'Use a opção "Gerenciar Usuários" para gerenciar membros da equipe'
 
     def clean(self):
         cleaned_data = self.cleaned_data

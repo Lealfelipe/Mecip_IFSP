@@ -1,6 +1,8 @@
 :root {
     --spacing: 1.5rem;
     --link-green-color: #195128;
+    --btn-assign-color: #0d6efd; /* cor específica para botões de atribuir */
+    --btn-delete-color: rgb(255, 64, 31);; /* cor específica para botões de deletar */
     --link-light-color: rgb(230, 230, 245);
     --clr-white: rgb(245, 245, 255);
     --clr-grenn: #195128;
@@ -150,6 +152,14 @@
   .table-row-header {
     background: var(--clr-light-gray);
     color: var(--clr-black-text)
+  }
+
+  .table-title {
+    font-size: var(--medium-font-size);
+    font-weight: bold;
+    padding: var(--spacing);
+    text-align: center;
+    background: var(--clr-light-gray);
   }
   
   .table-cel,
@@ -304,7 +314,25 @@
   }
   
   .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background-color: var(--link-green-color);
+    color: var(--clr-white);
+    font-weight: bold;
+    border: none;
+    width: var(--default-width-btn);
+    padding: 1rem 2rem;
+    margin: 1rem 0;
+    border-radius: var(--default-border-radius);
+    cursor: pointer;
+    transition: filter var(--transition-fast) ease-in-out;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .btn-assign {
+    background-color: var(--btn-assign-color);
     color: var(--clr-white);
     font-weight: bold;
     border: none;
@@ -334,22 +362,47 @@
   }
   
   .btn-delete {
-    background: tomato;
+    background-color: var(--btn-delete-color);
   }
 
   .btn-back {
     background: #6c757d;
   }
-  
-  .btn:hover {
-    filter: brightness(90%);
+
+  .btn-filter {
+    width: auto;
+    padding: 0.5rem 1rem;
+    font-size: var(--smaller-font-size);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--default-border-radius);
+    cursor: pointer;
+    transition: filter var(--transition-fast) ease-in-out;
+    border: none;
+    color: var(--clr-white);
+    font-weight: bold;
+    margin: 0.5rem 0;
+  }
+
+  .btn-filter-apply {
+    background-color: #0d6efd;
+  }
+
+  .btn-filter-clear {
+    background-color: #6c757d;
   }
   
-  .btn:focus,
-  .btn:active {
-    filter: brightness(80%);
-    box-shadow: 0 0 5px var(--link-green-color);
-  }
+.btn:hover {
+  filter: brightness(90%);
+}
+  
+.btn:focus,
+.btn:active {
+  filter: brightness(80%);
+  box-shadow: 0 0 5px var(--link-green-color);
+}
 
   .mecip-text {
     font-family: open_sansextrabold, 'Open Sans', Arial, Helvetica, sans-serif; /* Define a fonte do texto */
@@ -370,4 +423,71 @@
 .style-login {
   max-width: 30rem;
   margin: var(--spacing) auto;  
+}
+
+.card {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.card h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+}
+.card p {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+.card-link {
+    text-decoration: none;
+    color: inherit;
+}
+.card-link:hover .card {
+    background: #e9e9e9;
+    transform: translateY(-2px);
+    transition: all 0.2s;
+}
+.card-selected {
+    border-color: #007bff;
+    background: #e7f3ff;
+}
+
+.dashboard-kpis {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard-title {
+    font-size: var(--bigger-font-size);
+    font-weight: bold;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.dashboard-filters-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+
+}
+
+.chart-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    align-content: start;
 }
