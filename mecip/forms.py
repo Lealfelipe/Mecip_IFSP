@@ -1,5 +1,5 @@
 from typing import Any
-from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, Question, ReportQuestionAnswer
+from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, QuestionnaireSection, Question, ReportQuestionAnswer, Attachments, QuestionAnswerOption
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -169,13 +169,17 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 class ReportForm(forms.ModelForm):
 
+    type_course = forms.ModelChoiceField(
+        queryset=Type_Course.objects.all(),
+        label='Nome do Curso'
+    )
+
     class Meta:
         model = Report
         fields = (
-            'course', 'campus', 'questionnaire', 'assessment', 'assigned_team', 'assigned_user', 'due_date', 'notes', 'status'
+            'type_course', 'campus', 'questionnaire', 'assessment', 'assigned_team', 'assigned_user', 'due_date', 'notes', 'status'
         )
         labels = {
-            'course': 'Nome do Curso',
             'campus': 'Campus Pertencente',
             'questionnaire': 'Questionário',
             'assessment': 'Avaliação',
@@ -201,18 +205,44 @@ class ReportForm(forms.ModelForm):
     # ocultar o campo assessment
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not self.instance.pk:  
+        if self.instance and self.instance.pk:
+            self.fields['type_course'].initial = self.instance.course.type_course
+        if not self.instance.pk:
             self.fields.pop('assessment')
 
-    def clean_unique_together(self):
+    def clean(self):
         cleaned_data = super().clean()
-        course = cleaned_data.get('course')
+        type_course = cleaned_data.get('type_course')
         campus = cleaned_data.get('campus')
 
-        if Report.objects.filter(course=course, campus=campus).exclude(pk=self.instance.pk).exists():
-            raise ValidationError('Relatório para este curso e campus já existe.')
+        if type_course and campus:
+            course = Course.objects.filter(type_course=type_course, campus=campus).first()
+            if not course:
+                msg = ValidationError('Curso nao disponivel nesse Campus')
+                self.add_error('type_course', msg)
+                self.add_error('campus', msg)
+                return cleaned_data
+            if Report.objects.filter(course=course, campus=campus).exclude(pk=self.instance.pk).exists():
+                msg = ValidationError('Relatorio para este curso e campus ja existe.')
+                self.add_error('type_course', msg)
+                self.add_error('campus', msg)
 
         return cleaned_data
+
+
+    def save(self, commit=True):
+        report = super().save(commit=False)
+        type_course = self.cleaned_data.get('type_course')
+        campus = self.cleaned_data.get('campus')
+
+        if type_course and campus:
+            report.course = Course.objects.filter(type_course=type_course, campus=campus).first()
+
+        if commit:
+            report.save()
+            self.save_m2m()
+
+        return report
 
 
 class QuestionnaireForm(forms.ModelForm):
@@ -227,12 +257,27 @@ class QuestionnaireForm(forms.ModelForm):
         }
 
 
+class QuestionnaireSectionForm(forms.ModelForm):
+    class Meta:
+        model = QuestionnaireSection
+        fields = ('questionnaire', 'name', 'teams', 'order')
+        labels = {
+            'questionnaire': 'Questionário',
+            'name': 'Nome da seção',
+            'teams': 'Equipes autorizadas',
+            'order': 'Ordem',
+        }
+        widgets = {
+            'teams': forms.CheckboxSelectMultiple,
+        }
+
+
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
-        fields = ('questionnaire', 'text', 'field_type', 'required', 'order', 'choices')
+        fields = ('section', 'text', 'field_type', 'required', 'order', 'choices')
         labels = {
-            'questionnaire': 'Questionário',
+            'section': 'Seção',
             'text': 'Pergunta',
             'field_type': 'Tipo',
             'required': 'Obrigatória',
@@ -241,13 +286,62 @@ class QuestionForm(forms.ModelForm):
         }
 
 
+class QuestionAnswerOptionForm(forms.ModelForm):
+    class Meta:
+        model = QuestionAnswerOption
+        fields = ('answer_value', 'acceptance_criteria')
+        labels = {
+            'answer_value': 'Alternativa',
+            'acceptance_criteria': 'Critério de aceitação',
+        }
+        widgets = {
+            'acceptance_criteria': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+QuestionAnswerOptionFormSet = forms.inlineformset_factory(
+    Question,
+    QuestionAnswerOption,
+    form=QuestionAnswerOptionForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+class AttachmentForm(forms.ModelForm):
+    class Meta:
+        model = Attachments
+        fields = ('name', 'file', 'description')
+        labels = {
+            'name': 'Nome do anexo',
+            'file': 'Arquivo',
+            'description': 'Descrição',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+AttachmentFormSet = forms.inlineformset_factory(
+    ReportQuestionAnswer,
+    Attachments,
+    form=AttachmentForm,
+    extra=1,
+    can_delete=True,
+)
+
+
 class ReportQuestionAnswerForm(forms.ModelForm):
     class Meta:
         model = ReportQuestionAnswer
-        fields = ('answer',)
-        labels = {'answer': 'Resposta'}
+        fields = ('answer', 'free_text')
+        labels = {
+            'answer': 'Resposta',
+            'free_text': 'Explore sua argumentação',
+        }
         widgets = {
             'answer': forms.Textarea(attrs={'rows': 3}),
+            'free_text': forms.Textarea(attrs={'rows': 3}),
         }
 
 

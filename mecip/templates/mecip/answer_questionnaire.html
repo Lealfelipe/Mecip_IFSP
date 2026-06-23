@@ -1,25 +1,367 @@
 {% extends "global/base.html" %}
 
 {% block content %}
-    <div class="form-wrapper">
-        <h2>Responder Questionário: {{ report.questionnaire.name }}</h2>
-        <p><strong>Relatório:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
-        <form method="post" action="">
-            {% csrf_token %}
-            <div class="form-content">
-                {% for answer in answers %}
-                    <div class="form-group">
-                        <label for="id_answer_{{ answer.id }}">{{ answer.question.text }}{% if answer.question.required %} *{% endif %}</label>
-                        <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer }}</textarea>
-                    </div>
+    <div class="questionnaire-wizard">
+        <aside class="questionnaire-steps">
+            <h2>{{ report.questionnaire.name }}</h2>
+            <ul class="wizard-steps">
+                {% for step in question_steps %}
+                    <li class="wizard-step {% if step.is_current %}is-current{% endif %} {% if step.is_completed %}is-completed{% endif %}">
+                        <button
+                            class="wizard-step-button"
+                            type="submit"
+                            form="questionnaire-answer-form"
+                            name="navigate_to"
+                            value="{{ step.number }}"
+                        >
+                            <span class="wizard-step-icon">{{ step.number }}</span>
+                            <span class="wizard-step-content">
+                                <span class="wizard-step-title">{{ step.title }}</span>
+                                <span class="wizard-step-description">
+                                    {% if step.is_current %}
+                                        Respondendo agora
+                                    {% elif step.is_completed %}
+                                        Respondida
+                                    {% else %}
+                                        Pendente
+                                    {% endif %}
+                                </span>
+                            </span>
+                        </button>
+                    </li>
                 {% endfor %}
+            </ul>
+        </aside>
+
+        <section class="questionnaire-card">
+            <div class="questionnaire-card-header">
+                <span>Step {{ current_index }} of {{ total_questions }}</span>
+                <h3>Pergunta {{ current_index }}</h3>
             </div>
-            <div class="form-content">
-                <div class="contact-links">
-                    <button class="btn" type="submit">Salvar respostas</button>
-                    <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:view_questionnaire" report_id=report.id %}'">Voltar</button>
+
+            <form id="questionnaire-answer-form" method="post" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-content questionnaire-card-body">
+                    {% if answer %}
+                        <div class="form-group">
+                            <label for="id_answer_{{ answer.id }}">{{ answer.question.text }}{% if answer.question.required %} *{% endif %}</label>
+
+                            {% if answer.question.answer_options.exists %}
+                                <div class="answer-options-inline">
+                                {% for option in answer.question.answer_options.all %}
+                                    <label class="answer-option-inline">
+                                        <input
+                                            type="radio"
+                                            name="answer_option_{{ answer.id }}"
+                                            value="{{ option.id }}"
+                                            data-criteria="{{ option.acceptance_criteria|escape }}"
+                                            {% if answer.selected_answer_option_id == option.id %}checked{% endif %}
+                                        >
+                                        {{ option.answer_value }}
+                                    </label>
+                                {% endfor %}
+                                </div>
+                                <div id="criteria_{{ answer.id }}" class="acceptance-criteria"></div>
+                            {% else %}
+                                <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer }}</textarea>
+                            {% endif %}
+
+                            <div class="free-text-section">
+                                <label for="id_free_text_{{ answer.id }}">Explore sua argumentação</label>
+                                <textarea
+                                    id="id_free_text_{{ answer.id }}"
+                                    name="free_text_{{ answer.id }}"
+                                    rows="3"
+                                    class="form-control"
+                                >{{ answer.free_text }}</textarea>
+                            </div>
+
+                            <div class="attachment-section">
+                                {{ attachment_formset.management_form }}
+
+                                {% if answer.attachments.exists %}
+                                    <div class="saved-attachments">
+                                        <h4>Anexos enviados</h4>
+
+                                        {% for attachment_form in attachment_formset %}
+                                            {% if attachment_form.instance.pk %}
+                                                <div class="saved-attachment-item" data-attachment-item>
+                                                    {{ attachment_form.id }}
+                                                    {% if attachment_form.DELETE %}
+                                                        <span class="attachment-delete-field">{{ attachment_form.DELETE }}</span>
+                                                    {% endif %}
+
+                                                    <div class="saved-attachment-summary">
+                                                        <a href="{{ attachment_form.instance.file.url }}" target="_blank" rel="noopener noreferrer">
+                                                            {{ attachment_form.instance.name }}
+                                                        </a>
+                                                        {% if attachment_form.instance.description %}
+                                                            <small>{{ attachment_form.instance.description }}</small>
+                                                        {% endif %}
+                                                    </div>
+
+                                                    <div class="saved-attachment-actions">
+                                                        <button type="button" class="attachment-icon-btn" data-edit-attachment aria-label="Editar anexo" title="Editar anexo">
+                                                            <i class="fi fi-sr-pencil"></i>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="attachment-icon-btn attachment-icon-danger"
+                                                            data-open-delete-modal
+                                                            data-attachment-name="{{ attachment_form.instance.name }}"
+                                                            aria-label="Excluir anexo"
+                                                            title="Excluir anexo"
+                                                        >
+                                                            <i class="fi fi-sr-trash"></i>
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="attachment-edit-fields" hidden>
+                                                        {{ attachment_form.name.label_tag }}
+                                                        {{ attachment_form.name }}
+
+                                                        <label for="{{ attachment_form.file.id_for_label }}">Arquivo</label>
+                                                        <div class="custom-file-field">
+                                                            {{ attachment_form.file }}
+                                                        </div>
+
+                                                        {{ attachment_form.description.label_tag }}
+                                                        {{ attachment_form.description }}
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <div id="attachment-fields" class="attachment-fields" hidden>
+                                    {% for attachment_form in attachment_formset %}
+                                        {% if not attachment_form.instance.pk %}
+                                        <div class="attachment-card attachment-card-new" data-new-attachment-card>
+                                            <div class="attachment-card-header">
+                                                <h4>Novo anexo</h4>
+                                                <button type="button" class="attachment-icon-btn attachment-icon-danger" data-remove-new-attachment aria-label="Remover novo anexo" title="Remover novo anexo">
+                                                    <i class="fi fi-sr-trash"></i>
+                                                </button>
+                                            </div>
+                                            {{ attachment_form.id }}
+                                            {{ attachment_form.name.label_tag }}
+                                            {{ attachment_form.name }}
+
+                                            <label for="{{ attachment_form.file.id_for_label }}">Arquivo</label>
+                                            <div class="custom-file-field">
+                                                {{ attachment_form.file }}
+                                            </div>
+
+                                            {{ attachment_form.description.label_tag }}
+                                            {{ attachment_form.description }}
+                                            {% if attachment_form.DELETE %}
+                                                <span class="attachment-delete-field">{{ attachment_form.DELETE }}</span>
+                                            {% endif %}
+
+                                            <div class="attachment-card-actions">
+                                                <button class="btn" type="submit" name="action" value="save_current">
+                                                    Salvar anexo
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <a href="javascript:;" class="attachment-add-link" id="show-attachment-fields">
+                                    + Add anexo
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p>Nenhuma pergunta encontrada.</p>
+                    {% endif %}
                 </div>
-            </div>
-        </form>
+
+                <div class="form-content questionnaire-card-footer">
+                    <div class="contact-links">
+                        {% if has_previous %}
+                            <button class="btn btn-back" type="submit" name="navigate_to" value="{{ previous_index }}">Pergunta anterior</button>
+                        {% endif %}
+
+                        {% if has_next %}
+                            <button class="btn" type="submit" name="navigate_to" value="{{ next_index }}">Proxima pergunta</button>
+                        {% endif %}
+
+                        <button class="btn" type="submit" name="action" value="finish">Salvar e concluir</button>
+                        <button type="button" class="btn btn-back" data-exit-url="{% url "mecip:view_questionnaire" report_id=report.id %}">Voltar</button>
+                    </div>
+                </div>
+            </form>
+        </section>
     </div>
+
+    <div class="attachment-modal-backdrop" id="attachment-delete-modal" hidden>
+        <div class="attachment-modal" role="dialog" aria-modal="true" aria-labelledby="attachment-delete-title">
+            <div class="attachment-modal-header">
+                <h3 id="attachment-delete-title">Excluir anexo</h3>
+            </div>
+            <div class="attachment-modal-body">
+                <p>Deseja realmente excluir este anexo?</p>
+                <strong id="attachment-delete-name"></strong>
+            </div>
+            <div class="attachment-modal-footer">
+                <button type="button" class="btn btn-back" id="cancel-delete-attachment">Cancelar</button>
+                <button type="button" class="btn btn-delete" id="confirm-delete-attachment">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="attachment-modal-backdrop" id="questionnaire-unsaved-modal" hidden>
+        <div class="attachment-modal" role="dialog" aria-modal="true" aria-labelledby="questionnaire-unsaved-title">
+            <div class="attachment-modal-header">
+                <h3 id="questionnaire-unsaved-title">Salvar questionário?</h3>
+            </div>
+            <div class="attachment-modal-body">
+                <p>Existem alterações nesta pergunta. Deseja salvar antes de sair?</p>
+            </div>
+            <div class="attachment-modal-footer">
+                <button type="button" class="btn btn-back" id="cancel-unsaved-exit">Cancelar</button>
+                <button type="button" class="btn" id="save-unsaved-exit">Salvar questionário</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('input[type="radio"][data-criteria]').forEach((input) => {
+            const updateCriteria = () => {
+                const answerId = input.name.replace('answer_option_', '');
+                const criteria = document.getElementById(`criteria_${answerId}`);
+                const selected = document.querySelector(`input[name="${input.name}"]:checked`);
+                criteria.textContent = selected ? selected.dataset.criteria : '';
+            };
+            input.addEventListener('change', updateCriteria);
+            updateCriteria();
+        });
+
+        const showAttachmentFields = document.getElementById('show-attachment-fields');
+        const attachmentFields = document.getElementById('attachment-fields');
+        const questionnaireForm = document.getElementById('questionnaire-answer-form');
+        let formHasUnsavedChanges = false;
+
+        if (showAttachmentFields && attachmentFields) {
+            showAttachmentFields.addEventListener('click', () => {
+                attachmentFields.hidden = false;
+                showAttachmentFields.hidden = true;
+            });
+        }
+
+        questionnaireForm.addEventListener('input', () => {
+            formHasUnsavedChanges = true;
+        });
+
+        questionnaireForm.addEventListener('change', () => {
+            formHasUnsavedChanges = true;
+        });
+
+        questionnaireForm.addEventListener('submit', () => {
+            formHasUnsavedChanges = false;
+        });
+
+        window.addEventListener('beforeunload', (event) => {
+            if (!formHasUnsavedChanges) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+
+        document.querySelectorAll('[data-remove-new-attachment]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const card = button.closest('[data-new-attachment-card]');
+                const deleteInput = card.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+                card.querySelectorAll('input[type="text"], textarea').forEach((field) => {
+                    field.value = '';
+                });
+
+                card.querySelectorAll('input[type="file"]').forEach((field) => {
+                    field.value = '';
+                });
+
+                if (deleteInput) {
+                    deleteInput.checked = true;
+                }
+
+                card.hidden = true;
+                attachmentFields.hidden = true;
+                showAttachmentFields.hidden = false;
+            });
+        });
+
+        document.querySelectorAll('[data-edit-attachment]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const item = button.closest('[data-attachment-item]');
+                const editFields = item.querySelector('.attachment-edit-fields');
+                editFields.hidden = !editFields.hidden;
+            });
+        });
+
+        const deleteModal = document.getElementById('attachment-delete-modal');
+        const deleteModalName = document.getElementById('attachment-delete-name');
+        const cancelDeleteAttachment = document.getElementById('cancel-delete-attachment');
+        const confirmDeleteAttachment = document.getElementById('confirm-delete-attachment');
+        let pendingDeleteItem = null;
+        const unsavedModal = document.getElementById('questionnaire-unsaved-modal');
+        const cancelUnsavedExit = document.getElementById('cancel-unsaved-exit');
+        const saveUnsavedExit = document.getElementById('save-unsaved-exit');
+        let pendingExitUrl = null;
+
+        document.querySelectorAll('[data-open-delete-modal]').forEach((button) => {
+            button.addEventListener('click', () => {
+                pendingDeleteItem = button.closest('[data-attachment-item]');
+                deleteModalName.textContent = button.dataset.attachmentName || '';
+                deleteModal.hidden = false;
+            });
+        });
+
+        cancelDeleteAttachment.addEventListener('click', () => {
+            pendingDeleteItem = null;
+            deleteModal.hidden = true;
+        });
+
+        confirmDeleteAttachment.addEventListener('click', () => {
+            if (!pendingDeleteItem) return;
+
+            const deleteInput = pendingDeleteItem.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+            if (deleteInput) {
+                deleteInput.checked = true;
+                pendingDeleteItem.classList.add('is-deleted');
+            }
+
+            pendingDeleteItem = null;
+            deleteModal.hidden = true;
+        });
+
+        document.querySelectorAll('[data-exit-url]').forEach((button) => {
+            button.addEventListener('click', () => {
+                pendingExitUrl = button.dataset.exitUrl;
+
+                if (formHasUnsavedChanges) {
+                    unsavedModal.hidden = false;
+                    return;
+                }
+
+                window.location.href = pendingExitUrl;
+            });
+        });
+
+        cancelUnsavedExit.addEventListener('click', () => {
+            pendingExitUrl = null;
+            unsavedModal.hidden = true;
+        });
+
+        saveUnsavedExit.addEventListener('click', () => {
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'save_and_exit';
+            questionnaireForm.appendChild(actionInput);
+            questionnaireForm.submit();
+        });
+    </script>
 {% endblock %}

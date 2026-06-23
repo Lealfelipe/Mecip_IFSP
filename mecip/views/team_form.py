@@ -95,15 +95,46 @@ def add_user_to_team(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
     
     if request.method == 'POST':
-        user_id = request.POST.get('user_id')
-        user = get_object_or_404(User, pk=user_id)
-        
-        if team.users.filter(pk=user.pk).exists():
-            messages.warning(request, f'O usuário {user.get_full_name() or user.username} já pertence a esta equipe.')
-        else:
-            team.users.add(user)
-            messages.success(request, f'Usuário {user.get_full_name() or user.username} adicionado à equipe!')
-        
+        remove_user_id = request.POST.get('remove_user_id')
+        if remove_user_id:
+            user = get_object_or_404(User, pk=remove_user_id)
+            if team.users.filter(pk=user.pk).exists():
+                team.users.remove(user)
+                messages.success(request, f'Usuário {user.get_full_name() or user.username} removido da equipe!')
+            else:
+                messages.warning(request, f'O usuário {user.get_full_name() or user.username} não pertence a esta equipe.')
+            return redirect('mecip:add_user_to_team', team_id=team.pk)
+
+        user_ids = request.POST.getlist('user_ids')
+
+        if not user_ids:
+            messages.warning(request, 'Selecione pelo menos um usuário.')
+            return redirect('mecip:add_user_to_team', team_id=team.pk)
+
+        added = []
+        already = []
+        invalid = []
+
+        for uid in user_ids:
+            try:
+                user = User.objects.get(pk=uid)
+            except User.DoesNotExist:
+                invalid.append(str(uid))
+                continue
+
+            if team.users.filter(pk=user.pk).exists():
+                already.append(user.get_full_name() or user.username)
+            else:
+                team.users.add(user)
+                added.append(user.get_full_name() or user.username)
+
+        if added:
+            messages.success(request, f'Usuário(s) {", ".join(added)} adicionado(s) à equipe!')
+        if already:
+            messages.warning(request, f'Usuário(s) {", ".join(already)} já pertencem à equipe.')
+        if invalid:
+            messages.error(request, f'IDs inválidos: {", ".join(invalid)}.')
+
         return redirect('mecip:add_user_to_team', team_id=team.pk)
     
     available_users = User.objects.exclude(pk__in=team.users.all())

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio {{ report.id }}</title>
+    <style>
+        @page { size: A4; margin: 20mm; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #111111;
+            line-height: 1.4;
+        }
+        h1 { font-size: 20px; margin: 0 0 8px 0; }
+        h2 {
+            font-size: 14px;
+            margin: 16px 0 6px 0;
+            border-bottom: 1px solid #cccccc;
+            padding-bottom: 4px;
+        }
+        p { margin: 4px 0; }
+        .muted { color: #555555; }
+        .block {
+            border: 1px solid #d9d9d9;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        ol { margin: 6px 0 0 18px; }
+        li { margin-bottom: 4px; }
+        .title{
+            background-color: #9a9a9a;
+        }
+    </style>
+</head>
+<body>
+    <div class="block">
+        <p><h1>Relatório:</h1> Numero: {{ report.id }} | Data: {{ report.created_date|date:"d/m/Y H:i" }}</p>
+    </div>
+    
+    <div class="block">
+        <h2 class="title">Campus</h2>
+        <p><strong>Nome:</strong> {{ report.campus.campus_name }}</p>
+        <p><strong>Endereco:</strong> {{ report.campus.street }}, {{ report.campus.number }} - {{ report.campus.neighborhood }}, {{ report.campus.city }}</p>
+        <p><strong>Contato:</strong> {{ report.campus.contact_number }}</p>
+        <p><strong>Email:</strong> {{ report.campus.email }}</p>
+    </div>
+
+    
+    <div class="block">
+        <h2 class="title">Curso</h2>
+        <p><strong>Tipo de curso:</strong> {{ report.course.type_course.type_name_course }}</p>
+        <p><strong>Duracao:</strong> {{ report.course.type_course.duration }}</p>
+        <p><strong>Categoria:</strong> {{ report.course.type_course.type_categorie }}</p>
+    </div>
+
+    <h2>Questionario associado ao relatorio</h2>
+    <div>
+        {% if report.questionnaire %}
+            <p><strong>Nome:</strong> {{ report.questionnaire.name }}</p>
+            <p><strong>Descricao:</strong> {{ report.questionnaire.description|default:"Sem descricao" }}</p>
+            {% if report.questionnaire.sections.exists %}
+                <ol>
+                    {% for section in report.questionnaire.sections.all %}
+                        <li>
+                            {{ section.name }}
+                            <ol>
+                                {% for question in section.questions.all %}
+                                    <li>{{ question.text }}</li>
+                                {% empty %}
+                                    <li>Nao ha perguntas cadastradas nesta secao.</li>
+                                {% endfor %}
+                            </ol>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <p class="muted">Nao ha perguntas cadastradas neste questionario.</p>
+            {% endif %}
+        {% else %}
+            <p class="muted">Este relatorio nao possui questionario associado.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,67 +1,86 @@
 <header class="header">
+    <nav class="menu" id="mainMenu">
+        <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="menuList" aria-label="Abrir menu">
+            <!-- Ícone de lista (hamburger) -->
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="3" y="6" width="18" height="2" fill="currentColor" />
+                <rect x="3" y="11" width="18" height="2" fill="currentColor" />
+                <rect x="3" y="16" width="18" height="2" fill="currentColor" />
+            </svg>
+        </button>
+
+        <div class="menu-panel" id="menuList" role="menu">
+            <ul class="menu-list consult" role="menu">
+                <li class="menu-item">
+                    <a href="{% url 'mecip:index_course' %}" class="menu-link">Cursos</a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'mecip:index_report' %}" class="menu-link">Relatórios</a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'mecip:index_team' %}" class="menu-link">Equipes</a>
+                </li>
+                <li class="menu-item">
+                    <a href="{% url 'mecip:index_questionnaire' %}" class="menu-link">Questionários</a>
+                </li>
+            </ul>
+
+            <hr class="menu-separator" />
+
+            <ul class="menu-list admin" role="menu">
+                {% if user.is_superuser %}
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:create' %}" class="menu-link">Criar Campus</a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:create_course' %}" class="menu-link">Criar Curso</a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:create_report' %}" class="menu-link">Criar Relatório</a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:create_team' %}" class="menu-link">Criar Equipe</a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:create_questionnaire' %}" class="menu-link">Criar Questionário</a>
+                    </li>
+                {% endif %}
+                <li class="menu-item">
+                    <a href="{% url 'mecip:logout' %}" class="menu-link">Logout</a>
+                </li>
+            </ul>
+        </div>
+
+    </nav>
+
     <h1 class="header-heading">
         <a href=" {% url 'mecip:index' %} " class="header-link">
             Mecip
         </a>
     </h1>
 
-    <nav class="menu">
-        <ul class="menu-list">
-            <li class="menu-item">
-                <a href="{% url 'mecip:index_course' %}" class="menu-link">
-                    Cursos
-                </a>
-            </li>
-            <li class="menu-item">
-                <a href="{% url 'mecip:index_report' %}" class="menu-link">
-                    Relatórios
-                </a>
-            </li>
-            <li class="menu-item">
-                <a href="{% url 'mecip:index_team' %}" class="menu-link">
-                    Equipes
-                </a>
-            </li>
-            <li class="menu-item">
-                <a href="{% url 'mecip:index_questionnaire' %}" class="menu-link">
-                    Questionários
-                </a>
-            </li>
-            {% if user.is_superuser %}
-                <li class="menu-item">
-                    <a href="{% url 'mecip:create' %}" class="menu-link">
-                        Criar Campus
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'mecip:create_course' %}" class="menu-link">
-                        Criar Curso
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'mecip:create_report' %}" class="menu-link">
-                        Criar Relatório
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'mecip:create_team' %}" class="menu-link">
-                        Criar Equipe
-                    </a>
-                </li>
-                <li class="menu-item">
-                    <a href="{% url 'mecip:create_questionnaire' %}" class="menu-link">
-                        Criar Questionário
-                    </a>
-                </li>
-            {% endif %}
-            <li class="menu-item">
-                <a href="{% url 'mecip:logout' %}" class="menu-link">
-                    Logout
-                </a>
-            </li>
-            
-        </ul>
-        
-    </nav>
+    <a href="{% url 'mecip:logout' %}" class="icon-logout" aria-label="Logout" title="Logout">
+        <i class="fi fi-sr-running" aria-hidden="true"></i>
+    </a>
 
 </header>
+
+<script>
+  (function(){
+    var toggle = document.getElementById('menuToggle');
+    var menu = document.getElementById('mainMenu');
+    function closeMenu(){
+      menu.classList.remove('open');
+      toggle.setAttribute('aria-expanded','false');
+    }
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var opened = menu.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', opened ? 'true' : 'false');
+    });
+    document.addEventListener('click', function(e){
+      if (!menu.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeMenu(); });
+  })();
+</script>

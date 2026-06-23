@@ -2,28 +2,84 @@
 
 {% block content %}
     <div class="single-contact">
-        <h2>Questionário: {{ report.questionnaire.name }}</h2>
-        <p><strong>Relatório:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
+        <h2>Questionario: {{ report.questionnaire.name }}</h2>
+        <p><strong>Relatorio:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
         <p><strong>Status:</strong> {{ report.status }}</p>
-        <div class="box">
-            <h3>Perguntas e respostas</h3>
-            <ul>
-            {% for answer in answers %}
-                <li><b>{{ answer.question.text }}</b><br>
-                    {{ answer.answer|default:'(ainda não respondido)' }}
-                </li>
-            {% empty %}
-                <li>Nenhuma pergunta registrada.</li>
-            {% endfor %}
-            </ul>
+
+        <div class="responsive_table">
+            <table class="contacts-table">
+                <caption class="table-caption">
+                    Perguntas e respostas
+                </caption>
+                <thead class="thead-light">
+                    <tr class="table-row table-row-header">
+                        <th scope="col" class="table-header">Pergunta</th>
+                        <th scope="col" class="table-header">Valor da resposta</th>
+                        <th scope="col" class="table-header">Explore sua Argumentação</th>
+                        <th scope="col" class="table-header">Anexos</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for answer in answers %}
+                        <tr class="table-row">
+                            <td class="table-cel">
+                                {{ answer.question.text }}
+                            </td>
+                            <td class="table-cel">
+                                {{ answer.answer|default:"---" }}
+                                {% if answer.selected_answer_option and answer.selected_answer_option.acceptance_criteria %}
+                                    <br><small><strong>Critério de aceitação:</strong> {{ answer.selected_answer_option.acceptance_criteria }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="table-cel">
+                                {{ answer.free_text|default:"---" }}
+                            </td>
+                            <td class="table-cel">
+                                {% if answer.attachments.exists %}
+                                    {% for attachment in answer.attachments.all %}
+                                        <a class="table-link" href="{{ attachment.file.url }}" target="_blank" rel="noopener noreferrer">
+                                            {{ attachment.name }}
+                                        </a>{% if not forloop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    ---
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr class="table-row">
+                            <td class="table-cel" colspan="4">
+                                Nenhuma resposta registrada.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         <div class="contact-links">
-            {% if can_answer %}
+            {% if can_answer and status_to_respond %}
             <div class="contact-links">
-                <button class="btn" onclick="window.location='{% url 'mecip:answer_questionnaire' report_id=report.id %}'">Responder Questionário</button>
+                <button class="btn" onclick="window.location='{% url 'mecip:answer_questionnaire' report_id=report.id %}'">Responder Questionario</button>
             </div>
             {% endif %}
+
+            {% if all_answered and status_to_respond %}
+            <div class="contact-links">
+                <button class="btn" onclick="window.location='{% url 'mecip:advance_report_status' report_id=report.id %}'">Encaminhar para avaliacao</button>
+            </div>
+            {% endif %}
+
+            {% if user.is_superuser and report.status == "Pendente avaliação" %}
+            <div class="contact-links">
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='ajustar' %}'">Encaminhar para ajuste</button>
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='aprovar' %}'">Aprovar</button>
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='bloquear' %}'">Bloquear</button>
+                <button class="btn btn-delete" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='reprovar' %}'">Reprovar</button>
+            </div>
+            {% endif %}
+
             <div class="contact-links">
                 {% comment %} <a class="btn btn-back" href="{% url 'mecip:report' report_id=report.id %}">Voltar</a> {% endcomment %}
                 <button class="btn btn-back" onclick="window.location='{% url 'mecip:report' report_id=report.id %}'">Voltar</button>

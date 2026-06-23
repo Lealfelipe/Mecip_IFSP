@@ -11,33 +11,33 @@
     </section>
 
     <section class="dashboard-filters dashboard-filters-container">
-        <form method="get" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <label>
-                Campus
-                <select name="campus">
-                    <option value="">Todos os campi</option>
-                    {% for campus in campuses %}
-                        <option value="{{ campus.id }}" {% if selected_campus == campus.id|stringformat:"s" %}selected{% endif %}>
-                            {{ campus.campus_name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </label>
+        <form method="get" class="filters-card" aria-label="Filtros de dashboard">
+            <div class="filters-row">
+                <div class="filter-item">
+                    <label class="form-label small">Campus</label>
+                    <select name="campus" class="form-select">
+                        <option value="">Todos os campi</option>
+                        {% for campus in campuses %}
+                            <option value="{{ campus.id }}" {% if selected_campus == campus.id|stringformat:"s" %}selected{% endif %}>{{ campus.campus_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <label>
-                Equipe
-                <select name="team">
-                    <option value="">Todas as equipes</option>
-                    {% for team in teams %}
-                        <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>
-                            {{ team.team_name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </label>
+                <div class="filter-item">
+                    <label class="form-label small">Equipe</label>
+                    <select name="team" class="form-select">
+                        <option value="">Todas as equipes</option>
+                        {% for team in teams %}
+                            <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.team_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <button class="btn-filter btn-filter-apply" type="submit">Aplicar filtro</button>
-            <a class="btn-filter btn-filter-clear" href="{% url 'mecip:dashboard' %}">Limpar filtros</a>
+                <div class="filter-actions">
+                    <button class="btn-filter btn-filter-apply" type="submit">Aplicar filtro</button>
+                    <a class="btn-filter btn-filter-clear" href="{% url 'mecip:dashboard' %}">Limpar</a>
+                </div>
+            </div>
         </form>
     </section>
 

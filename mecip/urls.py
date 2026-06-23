@@ -36,9 +36,14 @@ urlpatterns = [
     path('relatorio/<int:report_id>/atribuir/', views.assign_report, name='assign_report'),
     path('relatorio/<int:report_id>/questionario/', views.view_questionnaire, name='view_questionnaire'),
     path('relatorio/<int:report_id>/responder/', views.answer_questionnaire, name='answer_questionnaire'),
+    path('relatorio/<int:report_id>/avancar-status/', views.advance_report_status, name='advance_report_status'),
+    path('relatorio/<int:report_id>/status/<str:action>/', views.change_report_status, name='change_report_status'),
+    path('relatorio/<int:report_id>/pdf/download/', views.report_pdf_download, name='report_pdf_download'),
     path('relatorio/criar', views.create_report, name='create_report'),
     path('curso/<int:course_id>/<int:campus_id>/criar/relatorio', views.create_report_params, name='create_report_params'),
     path('relatorio/<int:report_id>/editar', views.update_report, name='update_report'),
+    path('api/course/<int:course_id>/campuses/', views.get_campus_for_course, name='get_campus_for_course'),
+    path('api/campus/<int:campus_id>/courses/', views.get_courses_for_campus, name='get_courses_for_campus'),
     path('dashboard/', views.dashboard, name='dashboard'),
 
     # Criar Equipe
@@ -54,6 +59,9 @@ urlpatterns = [
     path('questionario/<int:questionnaire_id>/', views.questionnaire, name='questionnaire'),
     path('questionario/criar/', views.create_questionnaire, name='create_questionnaire'),
     path('questionario/<int:questionnaire_id>/editar', views.update_questionnaire, name='update_questionnaire'),
+    path('questionario/<int:questionnaire_id>/secao/criar/', views.create_questionnaire_section, name='create_questionnaire_section'),
+    path('questionario/<int:questionnaire_id>/secao/<int:section_id>/editar', views.update_questionnaire_section, name='update_questionnaire_section'),
+    path('questionario/<int:questionnaire_id>/secao/<int:section_id>/deletar', views.delete_questionnaire_section, name='delete_questionnaire_section'),
 
     # Criar Questão
     path('questionario/<int:questionnaire_id>/questao/criar/', views.create_question, name='create_question'),

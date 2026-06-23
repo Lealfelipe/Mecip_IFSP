@@ -63,11 +63,22 @@ class QuestionnaireAdmin(admin.ModelAdmin):
     list_display_links = 'id', 'name',
 
 
+@admin.register(models.QuestionnaireSection)
+class QuestionnaireSectionAdmin(admin.ModelAdmin):
+    list_display = 'id', 'questionnaire', 'name', 'order',
+    ordering = '-id',
+    search_fields = 'id', 'name', 'questionnaire__name',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'name',
+    filter_horizontal = 'teams',
+
+
 @admin.register(models.Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = 'id', 'questionnaire', 'text', 'field_type', 'required', 'order',
+    list_display = 'id', 'section', 'text', 'field_type', 'required', 'order',
     ordering = '-id',
-    search_fields = 'id', 'text', 'questionnaire',
+    search_fields = 'id', 'text', 'section__name', 'section__questionnaire__name',
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = 'id', 'text',

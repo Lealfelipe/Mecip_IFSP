@@ -2,11 +2,15 @@
 
 {% block content %}
   <div class="style-login">
-
-    <h2 class="mecip-text">MECIP</h2>
-    <h2>Entrar</h2>
-
-    {% include "mecip/partials/_user-form.html" %}
-    
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <span class="auth-eyebrow">MECIP</span>
+        <h1>Entrar</h1>
+        <p>Use suas credenciais para acessar o painel MECIP.</p>
+      </div>
+      <div class="auth-card-body">
+        {% include "mecip/partials/_user-form.html" %}
+      </div>
+    </div>
   </div>
 {% endblock content %}

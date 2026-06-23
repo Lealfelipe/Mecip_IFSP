@@ -4,7 +4,7 @@
     <div class="form-wrapper">
         <h2>{{ site_title }}</h2>
 
-        <form 
+        <form
         action='{{ form_action }}'
         method="POST"
         enctype="multipart/form-data"
@@ -16,13 +16,13 @@
                 <div class="form-group">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
-                    
+
                     {% if field.help_text %}
                         <small class="form-text text-muted d-block mt-2">
                             {{ field.help_text | safe }}
                         </small>
                     {% endif %}
-                    
+
                     {{ field.errors }}
                 </div>
             {% endfor %}
@@ -34,27 +34,25 @@
         </div>
 
         </form>
-
-        
     </div>
 
     {% if questionnaire.pk %}
-        <div style="margin-top: 40px;">
-            {% comment %} <h3>Questões do Questionário</h3> {% endcomment %}
-            
-            {% if questions %}
+        <div class="questionnaire-related-content">
+            {% if sections %}
                 <div class="responsive_table">
                     <table class="contacts-table">
                         <caption class="table-caption">
                             {% if user.is_superuser %}
+                                <button class="btn" onclick="window.location='{% url "mecip:create_questionnaire_section" questionnaire.id %}'">Criar Seção</button>
                                 <button class="btn" onclick="window.location='{% url "mecip:create_question" questionnaire.id %}'">Criar Questão</button>
                             {% endif %}
                         </caption>
                         <thead>
                             <tr class="table-row table-row-header">
-                                <th class="table-title" colspan="5">Questões do Questionário</th>
+                                <th class="table-title" colspan="6">Seções e Questões do Questionário</th>
                             </tr>
                             <tr class="table-row table-row-header">
+                                <th class="table-header">Seção</th>
                                 <th class="table-header">Ordem</th>
                                 <th class="table-header">Pergunta</th>
                                 <th class="table-header">Tipo</th>
@@ -64,43 +62,93 @@
                         </thead>
 
                         <tbody>
-                            {% for question in questions %}
-                                <tr class="table-row">
-                                    <td class="table-cel">{{ question.order }}</td>
-                                    <td class="table-cel">{{ question.text|truncatewords:10 }}</td>
-                                    <td class="table-cel">{{ question.get_field_type_display }}</td>
-                                    <td class="table-cel">
-                                        {% if question.required %}
-                                            <span style="color: green;">Sim</span>
-                                        {% else %}
-                                            <span style="color: red;">Não</span>
+                            {% for section in sections %}
+                                <tr class="table-row questionnaire-section-row" data-section-header="{{ section.id }}">
+                                    <th class="table-cel questionnaire-section-cell" colspan="6">
+                                        <button type="button" class="section-toggle" data-section-toggle="{{ section.id }}" aria-expanded="true">
+                                            <i class="fi fi-sr-angle-small-down"></i>
+                                            <span>{{ section.order }} - {{ section.name }}</span>
+                                        </button>
+
+                                        <small class="section-teams">
+                                            Equipes:
+                                            {% for team in section.teams.all %}
+                                                {{ team.team_name }}{% if not forloop.last %}, {% endif %}
+                                            {% empty %}
+                                                Todas
+                                            {% endfor %}
+                                        </small>
+
+                                        {% if user.is_superuser %}
+                                            <span class="section-actions">
+                                                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_questionnaire_section" questionnaire.id section.id %}'" aria-label="Editar seção" title="Editar seção">
+                                                    <i class="fi fi-sr-pencil"></i>
+                                                </button>
+                                                <button type="button" class="section-icon-btn section-icon-danger" onclick="return confirm('Tem certeza?') && (window.location='{% url "mecip:delete_questionnaire_section" questionnaire.id section.id %}')" aria-label="Deletar seção" title="Deletar seção">
+                                                    <i class="fi fi-sr-trash"></i>
+                                                </button>
+                                            </span>
                                         {% endif %}
-                                    </td>
-                                    <td class="table-cel">
-                                        <button class="btn btn-link" 
-                                        onclick="window.location='{% url "mecip:update_question" questionnaire.id question.id %}'">
-                                            Editar
-                                        </button>
-                                        <button class="btn btn-delete" 
-                                        onclick="window.location='{% url "mecip:delete_question" questionnaire.id question.id %}'"
-                                        onclick="return confirm('Tem certeza?')">
-                                            Deletar
-                                        </button>
-                                    </td>
+                                    </th>
                                 </tr>
+                                {% for question in section.questions.all %}
+                                    <tr class="table-row" data-section-question="{{ section.id }}">
+                                        <td class="table-cel">{{ section.name }}</td>
+                                        <td class="table-cel">{{ question.order }}</td>
+                                        <td class="table-cel">{{ question.text|truncatewords:10 }}</td>
+                                        <td class="table-cel">{{ question.get_field_type_display }}</td>
+                                        <td class="table-cel">
+                                            {% if question.required %}
+                                                <span class="status-positive">Sim</span>
+                                            {% else %}
+                                                <span class="status-negative">Não</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="table-cel">
+                                            <span class="question-actions">
+                                                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_question" questionnaire.id question.id %}'" aria-label="Editar questão" title="Editar questão">
+                                                    <i class="fi fi-sr-pencil"></i>
+                                                </button>
+                                                <button type="button" class="section-icon-btn section-icon-danger" onclick="return confirm('Tem certeza?') && (window.location='{% url "mecip:delete_question" questionnaire.id question.id %}')" aria-label="Deletar questão" title="Deletar questão">
+                                                    <i class="fi fi-sr-trash"></i>
+                                                </button>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr class="table-row" data-section-question="{{ section.id }}">
+                                        <td class="table-cel" colspan="6">Nenhuma questão cadastrada nesta seção.</td>
+                                    </tr>
+                                {% endfor %}
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p>Nenhuma questão cadastrada.</p>
+                <p>Nenhuma seção cadastrada.</p>
                 {% if user.is_superuser %}
                     <div class="contact-links">
+                        <a class="btn" href="{% url "mecip:create_questionnaire_section" questionnaire.id %}">+ Seção</a>
                         <a class="btn" href="{% url "mecip:create_question" questionnaire.id %}">+ Questão</a>
                     </div>
                 {% endif %}
             {% endif %}
         </div>
     {% endif %}
+
+    <script>
+        document.querySelectorAll('[data-section-toggle]').forEach((toggleButton) => {
+            toggleButton.addEventListener('click', () => {
+                const sectionId = toggleButton.dataset.sectionToggle;
+                const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+
+                toggleButton.setAttribute('aria-expanded', String(!isExpanded));
+
+                document.querySelectorAll(`[data-section-question="${sectionId}"]`).forEach((row) => {
+                    row.hidden = isExpanded;
+                });
+            });
+        });
+    </script>
 
 {% endblock content %}

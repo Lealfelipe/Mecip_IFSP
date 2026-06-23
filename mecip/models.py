@@ -58,6 +58,20 @@ class Questionnaire(models.Model):
         return self.name
 
 
+class QuestionnaireSection(models.Model):
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE, related_name='sections')
+    name = models.CharField(max_length=250)
+    teams = models.ManyToManyField('Team', blank=True, related_name='questionnaire_sections')
+    order = models.PositiveIntegerField(default=0)
+    created_date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['questionnaire', 'order', 'name']
+
+    def __str__(self) -> str:
+        return f'{self.questionnaire.name} - {self.name}'
+
+
 class Question(models.Model):
     QUESTION_TYPES = [
         ('text', 'Texto'),
@@ -66,7 +80,7 @@ class Question(models.Model):
         ('choice', 'Múltipla escolha'),
     ]
 
-    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE, related_name='questions')
+    section = models.ForeignKey(QuestionnaireSection, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField()
     field_type = models.CharField(max_length=25, choices=QUESTION_TYPES, default='text')
     required = models.BooleanField(default=True)
@@ -74,16 +88,36 @@ class Question(models.Model):
     choices = models.TextField(blank=True, help_text='Separe opções com vírgula se for múltipla escolha (choice)')
 
     class Meta:
-        ordering = ['questionnaire', 'order']
+        ordering = ['section__questionnaire', 'section__order', 'order']
 
     def __str__(self) -> str:
         return f'{self.order} - {self.text[:50]}'
 
 
+class QuestionAnswerOption(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answer_options')
+    answer_value = models.CharField(max_length=250)
+    acceptance_criteria = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['question', 'id']
+
+    def __str__(self) -> str:
+        return self.answer_value
+
+
 class ReportQuestionAnswer(models.Model):
     report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    selected_answer_option = models.ForeignKey(
+        QuestionAnswerOption,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='report_answers',
+    )
     answer = models.TextField(blank=True, null=True)
+    free_text = models.TextField(blank=True, null=True)
     created_date = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -91,6 +125,26 @@ class ReportQuestionAnswer(models.Model):
 
     def __str__(self) -> str:
         return f'{self.report} - {self.question.text[:40]}'
+
+
+class Attachments(models.Model):
+    answer = models.ForeignKey(
+        ReportQuestionAnswer,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='attachments',
+    )
+    name = models.CharField(max_length=250)
+    file = models.FileField(upload_to='answer_attachments/')
+    description = models.TextField(blank=True)
+    created_date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-created_date']
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Report(models.Model):
@@ -110,7 +164,7 @@ class Report(models.Model):
         ('Bloqueado', 'Bloqueado'),
         ('Pendente ajuste', 'Pendente ajuste'),
         ('Pendente avaliação', 'Pendente avaliação'),
-        ('Aprovado', 'Aprovado'),
+        # ('Aprovado', 'Aprovado'), // Status não aparece na lista de opções para alteração, só pode ser definido como "Aprovado" por um usuário com permissão de aprovação. Status final, não pode ser alterado para outro depois de aprovado
         ('Reprovado', 'Reprovado'),
     ]
     

@@ -1,42 +1,132 @@
 {% extends "global/base.html" %}
 
-{% block content  %}
-    <div class="form-wrapper">
+{% block content %}
+  <div class="container content-space-2 create-page">
+    <form class="create-form" action="{{ form_action }}" method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
 
-
-        <h2>{{ site_title }}</h2>
-
-        <form 
-        action= '{{ form_action }}'
-        method="POST"
-        enctype="multipart/form-data"
-        >
-        {% csrf_token %}
-
-        <div class="form-content">
-            {% for field in form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    
-                    {% if field.help_text %}
-                        <small class="form-text text-muted d-block mt-2">
-                            {{ field.help_text | safe }}
-                        </small>
-                    {% endif %}
-                    
-                    {{ field.errors }}
-                </div>
-            {% endfor %}
-        </div>
-
-        <div class="form-content">
-            <div class="contact-links">
-                <button class="btn" type="submit">Enviar</button>
-                <button type="button" class="btn btn-back" onclick="window.location='{% url "mecip:index" %}'">Voltar</button>
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header card-header-create bg-img-start">
+              <div class="flex-grow-1">
+                <h3 class="card-header-title">{{ site_title }}</h3>
+                <p class="card-text">Preencha os campos abaixo</p>
+              </div>
             </div>
-        </div>
 
-        </form>
-    </div>
-{% endblock content  %}
+            <div class="card-body">
+              {% for field in form %}
+                <div class="form-group">
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                  {{ field }}
+
+                  {% if field.help_text %}
+                    <small class="form-text text-muted d-block mt-2">{{ field.help_text | safe }}</small>
+                  {% endif %}
+
+                  {{ field.errors }}
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="card-footer">
+              <div class="d-flex align-items-center">
+                <button class="btn btn-white" type="button" onclick="window.location='{% url 'mecip:index' %}'">Voltar</button>
+                <div class="ms-auto d-flex gap-2">
+                  <button class="btn btn-ghost-secondary" type="reset">Limpar</button>
+                  <button class="btn btn" type="submit">Enviar</button>
+                </div>
+              </div>
+            </div>
+          {% comment %} </div> {% endcomment %}
+        </div>
+    </form>
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const courseField = document.querySelector('select[name="type_course"]');
+        const campusField = document.querySelector('select[name="campus"]');
+        const questionnaireField = document.querySelector('select[name="questionnaire"]');
+        const courseApiTemplate = "{% url 'mecip:get_campus_for_course' course_id=0 %}";
+        const campusApiTemplate = "{% url 'mecip:get_courses_for_campus' campus_id=0 %}";
+
+        const initialCourseOptions = Array.from(courseField?.options || []).map(option => ({
+            value: option.value,
+            text: option.textContent,
+        }));
+        const initialCampusOptions = Array.from(campusField?.options || []).map(option => ({
+            value: option.value,
+            text: option.textContent,
+        }));
+
+        const fillOptions = (selectField, options, selectedValue = '') => {
+            selectField.innerHTML = '';
+            options.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.value;
+                option.textContent = item.text;
+                selectField.appendChild(option);
+            });
+
+            const hasSelectedValue = options.some(item => String(item.value) === String(selectedValue));
+            selectField.value = hasSelectedValue ? selectedValue : '';
+        };
+
+        // Esse filtro dinamico e usado no formulario de relatorio.
+        if (courseField && campusField && questionnaireField) {
+            courseField.addEventListener('change', function() {
+                const courseId = this.value;
+                const selectedCampus = campusField.value;
+                if (courseId) {
+                    const url = courseApiTemplate.replace('0', courseId);
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            const campusOptions = [
+                                { value: '', text: '---------' },
+                                ...data.map(campus => ({
+                                    value: campus.id,
+                                    text: campus.name,
+                                })),
+                            ];
+                            fillOptions(campusField, campusOptions, selectedCampus);
+                        })
+                        .catch(() => {
+                            campusField.innerHTML = '<option value="">---------</option>';
+                        });
+                } else {
+                    fillOptions(campusField, initialCampusOptions, selectedCampus);
+                }
+            });
+
+            campusField.addEventListener('change', function() {
+                const campusId = this.value;
+                const selectedCourse = courseField.value;
+                if (campusId) {
+                    const url = campusApiTemplate.replace('0', campusId);
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            const courseOptions = [
+                                { value: '', text: '---------' },
+                                ...data.map(course => ({
+                                    value: course.id,
+                                    text: course.name,
+                                })),
+                            ];
+                            fillOptions(courseField, courseOptions, selectedCourse);
+                        })
+                        .catch(() => {
+                            courseField.innerHTML = '<option value="">---------</option>';
+                        });
+                } else {
+                    fillOptions(courseField, initialCourseOptions, selectedCourse);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

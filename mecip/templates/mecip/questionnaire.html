@@ -2,38 +2,60 @@
 
 {% block content %}
     <div class="single-contact">
-        <h1 class="single-contact-name">
-            {{ questionnaire.name }}
-        </h1>
-        <p><b>Nome:</b> {{ questionnaire.name }}</p>
-        <p><b>Campus:</b> {{ questionnaire.campus.campus_name|default:"---" }}</p>
-        <p><b>Descrição:</b> {{ questionnaire.description|default:"---" }}</p>
-        <p><b>Data de Criação:</b> {{ questionnaire.created_date|date:"d/m/Y H:i" }}</p>
-        <p><b>Status:</b> 
-            {% if questionnaire.active %}
-                <span style="color: green;">Ativo</span>
-            {% else %}
-                <span style="color: red;">Inativo</span>
-            {% endif %}
-        </p>
-
         {% if user.is_superuser %}
             <div class="contact-links">
-                <button class="btn btn-link" onclick="window.location='{% url "mecip:update_questionnaire" questionnaire_id=questionnaire.id %}'">Editar</button>
-                <button class="btn btn-back" onclick="window.location='{% url "mecip:index_questionnaire" %}'">Voltar</button>
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:index_questionnaire" %}'" aria-label="Voltar" title="Voltar">
+                    <i class="fi fi-sr-arrow-left"></i>
+                </button>
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_questionnaire" questionnaire_id=questionnaire.id %}'" aria-label="Editar questionário" title="Editar questionário">
+                    <i class="fi fi-sr-pencil"></i>
+                </button>
             </div>
         {% endif %}
-
+        <div class="responsive_table">
+            <table class="contacts-table">
+                <tbody>
+                    <tr class="table-row">
+                        <th class="table-header">Nome</th>
+                        <td class="table-cel">{{ questionnaire.name }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <th class="table-header">Campus</th>
+                        <td class="table-cel">{{ questionnaire.campus.campus_name|default:"---" }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <th class="table-header">Descrição</th>
+                        <td class="table-cel">{{ questionnaire.description|default:"---" }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <th class="table-header">Data de Criação</th>
+                        <td class="table-cel">{{ questionnaire.created_date|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <th class="table-header">Status</th>
+                        <td class="table-cel">
+                            {% if questionnaire.active %}
+                                <span class="status-positive">Ativo</span>
+                            {% else %}
+                                <span class="status-negative">Inativo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    {% if questions %}
+    {% if sections %}
         <div class="responsive_table">
             <table class="contacts-table">
                 <caption class="table-caption">
-                    Questões
+                    Seções e Questões
                 </caption>
                 <thead>
                     <tr class="table-row table-row-header">
+                        <th class="table-header">Seção</th>
+                        <th class="table-header">Equipes</th>
                         <th class="table-header">Ordem</th>
                         <th class="table-header">Pergunta</th>
                         <th class="table-header">Tipo</th>
@@ -42,28 +64,82 @@
                 </thead>
 
                 <tbody>
-                    {% for question in questions %}
-                        <tr class="table-row">
-                            <td class="table-cel">{{ question.order }}</td>
-                            <td class="table-cel">
-                                <a class="table-link" 
-                                href="{% url "mecip:update_question" questionnaire.id question.id %}">
-                                    {{ question.text|truncatewords:10 }}
-                                </a>
-                            </td>
-                            <td class="table-cel">{{ question.get_field_type_display }}</td>
-                            <td class="table-cel">
-                                {% if question.required %}
-                                    <span style="color: green;">Sim</span>
-                                {% else %}
-                                    <span style="color: red;">Não</span>
-                                {% endif %}
-                            </td>
+                    {% for section in sections %}
+                        <tr class="table-row questionnaire-section-row" data-section-header="{{ section.id }}">
+                            <th class="table-cel questionnaire-section-cell" colspan="6">
+                                <button type="button" class="section-toggle" data-section-toggle="{{ section.id }}" aria-expanded="true">
+                                    <i class="fi fi-sr-angle-small-down"></i>
+                                    <span>{{ section.name }}</span>
+                                </button>
+
+                                <small class="section-teams">
+                                    Equipes:
+                                    {% for team in section.teams.all %}
+                                        {{ team.team_name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        Todas
+                                    {% endfor %}
+                                </small>
+                            </th>
                         </tr>
+                        {% for question in section.questions.all %}
+                            <tr class="table-row" data-section-question="{{ section.id }}">
+                                <td class="table-cel">{{ section.name }}</td>
+                                <td class="table-cel">
+                                    {% for team in section.teams.all %}
+                                        {{ team.team_name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        Todas
+                                    {% endfor %}
+                                </td>
+                                <td class="table-cel">{{ question.order }}</td>
+                                <td class="table-cel">
+                                    <a class="table-link"
+                                    href="{% url "mecip:update_question" questionnaire.id question.id %}">
+                                        {{ question.text|truncatewords:10 }}
+                                    </a>
+                                </td>
+                                <td class="table-cel">{{ question.get_field_type_display }}</td>
+                                <td class="table-cel">
+                                    {% if question.required %}
+                                        <span class="status-positive">Sim</span>
+                                    {% else %}
+                                        <span class="status-negative">Não</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr class="table-row" data-section-question="{{ section.id }}">
+                                <td class="table-cel">{{ section.name }}</td>
+                                <td class="table-cel">
+                                    {% for team in section.teams.all %}
+                                        {{ team.team_name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        Todas
+                                    {% endfor %}
+                                </td>
+                                <td class="table-cel" colspan="4">Nenhuma questão cadastrada nesta seção.</td>
+                            </tr>
+                        {% endfor %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     {% endif %}
+
+    <script>
+        document.querySelectorAll('[data-section-toggle]').forEach((toggleButton) => {
+            toggleButton.addEventListener('click', () => {
+                const sectionId = toggleButton.dataset.sectionToggle;
+                const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+
+                toggleButton.setAttribute('aria-expanded', String(!isExpanded));
+
+                document.querySelectorAll(`[data-section-question="${sectionId}"]`).forEach((row) => {
+                    row.hidden = isExpanded;
+                });
+            });
+        });
+    </script>
 
 {% endblock %}

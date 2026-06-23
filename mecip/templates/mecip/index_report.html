@@ -2,22 +2,22 @@
 
 {% block content %}
 {% if page_obj %}
-    <div class="contact-actions" style="margin-bottom: 1rem;">
+    <div class="contact-actions contact-actions-spaced">
         <button class="btn" onclick="window.location='{% url 'mecip:dashboard' %}'">Ver Dashboard</button>
     </div>
     <div class="responsive_table">
         <table class="contacts-table">
             <caption class="table-caption">
-                Relatórios
+                RelatÃ³rios
             </caption>
-            <thead>
+            <thead class="thead-light">
                 <tr class="table-row table-row-header">
-                    <th class="table-header">Nome Curso</th>
-                    <th class="table-header">Campus</th>
-                    <th class="table-header">Cidade</th>
-                    <th class="table-header">Equipe Atribuída</th>
-                    <th class="table-header">Usuário Atribuído</th>
-                    <th class="table-header">Status</th>
+                    <th scope="col" class="table-header">Nome Curso</th>
+                    <th scope="col" class="table-header">Campus</th>
+                    <th scope="col" class="table-header">Cidade</th>
+                    <th scope="col" class="table-header">Equipe AtribuÃ­da</th>
+                    <th scope="col" class="table-header">UsuÃ¡rio AtribuÃ­do</th>
+                    <th scope="col" class="table-header">Status</th>
                 </tr>
             </thead>
 
@@ -33,7 +33,7 @@
                             <a class="table-link" href="{% url "mecip:report" report.id %}">
                                 {{ report.campus.campus_name }}
                             </a>
-                        </td>                      
+                        </td>
                         <td class="table-cel">
                             <a class="table-link" href="{% url "mecip:report" report.id %}">
                                 {{ report.campus.city }}
@@ -54,7 +54,7 @@
                                 {{ report.status }}
                             </a>
                         </td>
-                        
+
                     </tr>
                 {% endfor %}
             </tbody>
@@ -69,4 +69,3 @@
     </div>
 {% endif %}
 {% endblock content %}
-    

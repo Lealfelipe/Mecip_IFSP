@@ -2,6 +2,9 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db.models import Count
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from io import BytesIO
 from mecip.models import Report, Campus, Team
 
 
@@ -96,6 +99,33 @@ def report(request, report_id):
         'mecip/report.html',
         context,
     )
+
+
+def report_pdf_download(request, report_id):
+    single_report = get_object_or_404(Report, pk=report_id)
+    pdf_bytes = _build_report_pdf(single_report)
+
+    if pdf_bytes is None:
+        messages.error(request, 'Nao foi possivel gerar o PDF do relatorio.')
+        return redirect('mecip:report', report_id=report_id)
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="relatorio_{single_report.course}_{single_report.campus.campus_name}.pdf"'
+    return response
+
+
+def _build_report_pdf(report: Report):
+    try:
+        from xhtml2pdf import pisa
+    except ImportError:
+        return None
+
+    html = render_to_string('mecip/report_pdf.html', {'report': report})
+    output = BytesIO()
+    pdf = pisa.CreatePDF(src=html, dest=output, encoding='utf-8')
+    if pdf.err:
+        return None
+    return output.getvalue()
 
 
 def assign_report(request, report_id):

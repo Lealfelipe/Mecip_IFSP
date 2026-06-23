@@ -1,8 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.core.exceptions import ValidationError
-from mecip.forms import QuestionnaireForm, QuestionForm
+from mecip.forms import QuestionnaireForm, QuestionnaireSectionForm, QuestionForm, QuestionAnswerOptionFormSet
 from django.urls import reverse
-from mecip.models import Questionnaire, Question
+from mecip.models import Questionnaire, QuestionnaireSection, Question
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
 
@@ -11,11 +10,22 @@ def is_admin(user):
     return user.is_superuser
 
 
-# ========== QUESTIONÁRIO ==========
+def prepare_question_form(form, questionnaire):
+    form.fields['section'].queryset = questionnaire.sections.all().order_by('order', 'name')
+    return form
+
+
+def prepare_section_form(form, questionnaire):
+    form.fields['questionnaire'].initial = questionnaire
+    form.fields['questionnaire'].disabled = True
+    return form
+
+
+# ========== QUESTIONARIO ==========
 
 @user_passes_test(is_admin)
 def create_questionnaire(request):
-    """Cria um novo questionário"""
+    """Cria um novo questionario"""
     form_action = reverse('mecip:create_questionnaire')
 
     if request.method == 'POST':
@@ -24,16 +34,16 @@ def create_questionnaire(request):
         context = {
             'form': form,
             'form_action': form_action,
-            'site_title': 'Criar Questionário'
+            'site_title': 'Criar Questionario'
         }
 
         if form.is_valid():
             questionnaire = form.save()
-            messages.success(request, 'Questionário cadastrado com sucesso')
+            messages.success(request, 'Questionario cadastrado com sucesso')
             return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire.pk)
         
         else:
-            messages.error(request, 'Erro ao cadastrar questionário')
+            messages.error(request, 'Erro ao cadastrar questionario')
 
         return render(
             request,
@@ -44,7 +54,7 @@ def create_questionnaire(request):
     context = {
         'form': QuestionnaireForm(),
         'form_action': form_action,
-        'site_title': 'Criar Questionário'
+        'site_title': 'Criar Questionario'
     }
     return render(
         request,
@@ -55,7 +65,7 @@ def create_questionnaire(request):
 
 @user_passes_test(is_admin)
 def update_questionnaire(request, questionnaire_id):
-    """Atualiza um questionário existente"""
+    """Atualiza um questionario existente"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
     form_action = reverse('mecip:update_questionnaire', args=(questionnaire_id,))
 
@@ -64,15 +74,15 @@ def update_questionnaire(request, questionnaire_id):
 
         if form.is_valid():
             form.save()
-            messages.success(request, 'Questionário alterado com sucesso')
+            messages.success(request, 'Questionario alterado com sucesso')
             return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire.id)
 
         else:
-            messages.error(request, 'Erro ao alterar questionário')
+            messages.error(request, 'Erro ao alterar questionario')
             context = {
                 'form': form,
                 'form_action': form_action,
-                'site_title': 'Editar Questionário',
+                'site_title': 'Editar Questionario',
             }
 
             return render(
@@ -82,43 +92,128 @@ def update_questionnaire(request, questionnaire_id):
             )
 
     form = QuestionnaireForm(instance=questionnaire)
-    questions = Question.objects.filter(questionnaire=questionnaire).order_by('order')
+    sections = questionnaire.sections.prefetch_related('questions', 'teams').order_by('order', 'name')
     
     context = {
         'form': form,
         'form_action': form_action,
-        'site_title': 'Editar Questionário',
+        'site_title': 'Editar Questionario',
         'questionnaire': questionnaire,
-        'questions': questions,
+        'sections': sections,
     }
     return render(request, 'mecip/update_questionnaire.html', context)
 
 
-# ========== QUESTÃO ==========
+# ========== SECAO ==========
+
+@user_passes_test(is_admin)
+def create_questionnaire_section(request, questionnaire_id):
+    """Cria uma nova secao para um questionario"""
+    questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+    form_action = reverse('mecip:create_questionnaire_section', args=(questionnaire_id,))
+
+    if request.method == 'POST':
+        form = prepare_section_form(QuestionnaireSectionForm(request.POST), questionnaire)
+        section = form.instance
+        section.questionnaire = questionnaire
+
+        if form.is_valid():
+            section = form.save(commit=False)
+            section.questionnaire = questionnaire
+            section.save()
+            form.save_m2m()
+            messages.success(request, 'Secao cadastrada com sucesso')
+            return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire_id)
+
+        messages.error(request, 'Erro ao cadastrar secao')
+    else:
+        form = prepare_section_form(QuestionnaireSectionForm(), questionnaire)
+
+    context = {
+        'form': form,
+        'form_action': form_action,
+        'site_title': f'Criar Secao - {questionnaire.name}',
+        'questionnaire': questionnaire,
+    }
+    return render(request, 'mecip/create.html', context)
+
+
+@user_passes_test(is_admin)
+def update_questionnaire_section(request, questionnaire_id, section_id):
+    """Atualiza uma secao existente"""
+    questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+    section = get_object_or_404(QuestionnaireSection, pk=section_id, questionnaire=questionnaire)
+    form_action = reverse('mecip:update_questionnaire_section', args=(questionnaire_id, section_id))
+
+    if request.method == 'POST':
+        form = prepare_section_form(QuestionnaireSectionForm(request.POST, instance=section), questionnaire)
+
+        if form.is_valid():
+            section = form.save(commit=False)
+            section.questionnaire = questionnaire
+            section.save()
+            form.save_m2m()
+            messages.success(request, 'Secao alterada com sucesso')
+            return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire_id)
+
+        messages.error(request, 'Erro ao alterar secao')
+    else:
+        form = prepare_section_form(QuestionnaireSectionForm(instance=section), questionnaire)
+
+    context = {
+        'form': form,
+        'form_action': form_action,
+        'site_title': f'Editar Secao - {questionnaire.name}',
+        'questionnaire': questionnaire,
+        'section': section,
+    }
+    return render(request, 'mecip/create.html', context)
+
+
+@user_passes_test(is_admin)
+def delete_questionnaire_section(request, questionnaire_id, section_id):
+    """Deleta uma secao"""
+    questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+    section = get_object_or_404(QuestionnaireSection, pk=section_id, questionnaire=questionnaire)
+    section.delete()
+    messages.success(request, 'Secao deletada com sucesso')
+    return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire_id)
+
+
+# ========== QUESTAO ==========
 
 @user_passes_test(is_admin)
 def create_question(request, questionnaire_id):
-    """Cria uma nova questão para um questionário"""
+    """Cria uma nova questao para um questionario"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
     form_action = reverse('mecip:create_question', args=(questionnaire_id,))
 
     if request.method == 'POST':
-        form = QuestionForm(request.POST)
-
+        form = prepare_question_form(QuestionForm(request.POST, request.FILES), questionnaire)
+        question = form.instance
+        answer_option_formset = QuestionAnswerOptionFormSet(
+            request.POST,
+            instance=question,
+            prefix='answer_options',
+        )
         context = {
             'form': form,
+            'answer_option_formset': answer_option_formset,
             'form_action': form_action,
-            'site_title': f'Criar Questão - {questionnaire.name}',
+            'site_title': f'Criar Questao - {questionnaire.name}',
             'questionnaire': questionnaire,
         }
 
-        if form.is_valid():
-            question = form.save()
-            messages.success(request, 'Questão cadastrada com sucesso')
+        if form.is_valid() and answer_option_formset.is_valid():
+            question = form.save(commit=False)
+            question.save()
+            answer_option_formset.instance = question
+            answer_option_formset.save()
+            messages.success(request, 'Questao cadastrada com sucesso')
             return redirect('mecip:update_question', questionnaire_id=questionnaire_id, question_id=question.pk)
         
         else:
-            messages.error(request, 'Erro ao cadastrar questão')
+            messages.error(request, 'Erro ao cadastrar questao')
 
         return render(
             request,
@@ -126,15 +221,14 @@ def create_question(request, questionnaire_id):
             context
         )
 
-    form = QuestionForm()
-    # Pré-seleciona o questionário
-    form.fields['questionnaire'].initial = questionnaire
-    form.fields['questionnaire'].disabled = True
+    form = prepare_question_form(QuestionForm(), questionnaire)
+    answer_option_formset = QuestionAnswerOptionFormSet(prefix='answer_options')
     
     context = {
         'form': form,
+        'answer_option_formset': answer_option_formset,
         'form_action': form_action,
-        'site_title': f'Criar Questão - {questionnaire.name}',
+        'site_title': f'Criar Questao - {questionnaire.name}',
         'questionnaire': questionnaire,
     }
     return render(
@@ -146,25 +240,31 @@ def create_question(request, questionnaire_id):
 
 @user_passes_test(is_admin)
 def update_question(request, questionnaire_id, question_id):
-    """Atualiza uma questão existente"""
+    """Atualiza uma questao existente"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
-    question = get_object_or_404(Question, pk=question_id, questionnaire=questionnaire)
+    question = get_object_or_404(Question, pk=question_id, section__questionnaire=questionnaire)
     form_action = reverse('mecip:update_question', args=(questionnaire_id, question_id))
 
     if request.method == 'POST':
-        form = QuestionForm(request.POST, instance=question)
-
-        if form.is_valid():
+        form = prepare_question_form(QuestionForm(request.POST, request.FILES, instance=question), questionnaire)
+        answer_option_formset = QuestionAnswerOptionFormSet(
+            request.POST,
+            instance=question,
+            prefix='answer_options',
+        )
+        if form.is_valid() and answer_option_formset.is_valid():
             form.save()
-            messages.success(request, 'Questão alterada com sucesso')
+            answer_option_formset.save()
+            messages.success(request, 'Questao alterada com sucesso')
             return redirect('mecip:update_question', questionnaire_id=questionnaire_id, question_id=question.id)
 
         else:
-            messages.error(request, 'Erro ao alterar questão')
+            messages.error(request, 'Erro ao alterar questao')
             context = {
                 'form': form,
+                'answer_option_formset': answer_option_formset,
                 'form_action': form_action,
-                'site_title': f'Editar Questão - {questionnaire.name}',
+                'site_title': f'Editar Questao - {questionnaire.name}',
                 'questionnaire': questionnaire,
                 'question': question,
             }
@@ -175,15 +275,14 @@ def update_question(request, questionnaire_id, question_id):
                 context
             )
 
-    form = QuestionForm(instance=question)
-    # Pré-seleciona o questionário
-    form.fields['questionnaire'].initial = questionnaire
-    form.fields['questionnaire'].disabled = True
+    form = prepare_question_form(QuestionForm(instance=question), questionnaire)
+    answer_option_formset = QuestionAnswerOptionFormSet(instance=question, prefix='answer_options')
     
     context = {
         'form': form,
+        'answer_option_formset': answer_option_formset,
         'form_action': form_action,
-        'site_title': f'Editar Questão - {questionnaire.name}',
+        'site_title': f'Editar Questao - {questionnaire.name}',
         'questionnaire': questionnaire,
         'question': question,
     }
@@ -192,10 +291,10 @@ def update_question(request, questionnaire_id, question_id):
 
 @user_passes_test(is_admin)
 def delete_question(request, questionnaire_id, question_id):
-    """Deleta uma questão"""
+    """Deleta uma questao"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
-    question = get_object_or_404(Question, pk=question_id, questionnaire=questionnaire)
+    question = get_object_or_404(Question, pk=question_id, section__questionnaire=questionnaire)
     
     question.delete()
-    messages.success(request, 'Questão deletada com sucesso')
+    messages.success(request, 'Questao deletada com sucesso')
     return redirect('mecip:update_questionnaire', questionnaire_id=questionnaire_id)
