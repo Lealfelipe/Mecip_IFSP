@@ -27,9 +27,9 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(models.Report)
 class ReportAdmin(admin.ModelAdmin):
-    list_display = 'id', 'course', 'campus',
-    ordering = '-id',
-    search_fields = 'id', 'course', 'campus',
+    list_display = 'id', 'course', 'campus', 'year',
+    ordering = '-year', '-id',
+    search_fields = 'id', 'course', 'campus', 'year',
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = 'id', 'course',
@@ -76,9 +76,9 @@ class QuestionnaireSectionAdmin(admin.ModelAdmin):
 
 @admin.register(models.Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = 'id', 'section', 'text', 'field_type', 'required', 'order',
+    list_display = 'id', 'section', 'indicator', 'special_condition', 'text', 'field_type', 'required', 'order',
     ordering = '-id',
-    search_fields = 'id', 'text', 'section__name', 'section__questionnaire__name',
+    search_fields = 'id', 'indicator', 'special_condition', 'text', 'section__name', 'section__questionnaire__name',
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = 'id', 'text',
@@ -92,4 +92,15 @@ class ReportQuestionAnswerAdmin(admin.ModelAdmin):
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = 'id', 'report',
+
+
+@admin.register(models.ReferenceAttachment)
+class ReferenceAttachmentAdmin(admin.ModelAdmin):
+    list_display = 'id', 'name', 'active', 'created_date',
+    ordering = 'name',
+    search_fields = 'id', 'name', 'description',
+    list_filter = 'active',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'name',
 

@@ -34,7 +34,12 @@
 </head>
 <body>
     <div class="block">
-        <p><h1>Relatório:</h1> Numero: {{ report.id }} | Data: {{ report.created_date|date:"d/m/Y H:i" }}</p>
+        <p>
+            <h1>Relatório:</h1>
+            Numero: {{ report.id }} |
+            Ano: {{ report.year }} |
+            Data: {{ report.created_date|date:"d/m/Y H:i" }}
+        </p>
     </div>
     
     <div class="block">

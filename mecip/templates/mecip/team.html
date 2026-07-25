@@ -2,21 +2,59 @@
 
 {% block content %}
     <div class="single-contact">
-        <h1 class="single-contact-name">
-            {{ team.team_name }}
-        </h1>
-        <p><b>Nome Equipe:</b> {{ team.team_name }}</p>
-        <p><b>Campus:</b> {{ team.campus }}</p>
-        <p><b>Cidade:</b> {{ team.campus.city }}</p>
-        <p><b>Created Date:</b> {{ team.created_date }}</p>
+        <div class="contact-links">
+            <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:index_team" %}'" aria-label="Voltar" title="Voltar">
+                <i class="fi fi-sr-arrow-left"></i>
+            </button>
+            {% if can_manage_records %}
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_team" team.id %}'" aria-label="Editar equipe" title="Editar equipe">
+                    <i class="fi fi-sr-pencil"></i>
+                </button>
+            {% endif %}
+        </div>
 
-        {% if user.is_superuser %}
+        <h1 class="single-contact-name">
+            Equipe: {{ team.team_name }}
+        </h1>
+
+        <div class="responsive-table">
+            <table class="contacts-table">
+                <tbody>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Nome Equipe</strong></td>
+                        <td class="table-cel">{{ team.team_name }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Campus</strong></td>
+                        <td class="table-cel">
+                            <span class="table-value-action">
+                                {{ team.campus }}
+                                <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:campus' team.campus.id %}'" aria-label="Visualizar campus" title="Visualizar campus">
+                                    <i class="fi fi-sr-eye"></i>
+                                </button>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Cidade</strong></td>
+                        <td class="table-cel">{{ team.campus.city }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Data de Criacao</strong></td>
+                        <td class="table-cel">{{ team.created_date|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Usuarios</strong></td>
+                        <td class="table-cel">{{ team.users.count }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% if can_manage_records %}
             <div class="contact-links">
-                <button type="submit" class="btn" onclick="window.location='{% url "mecip:add_user_to_team" team.id %}'">Gerenciar Usuários</button>
-                <button type="submit" class="btn" onclick="window.location='{% url "mecip:update_team" team.id %}'">Editar</button>
-                <button type="submit" class="btn btn-back" onclick="window.location='{% url "mecip:index_team" %}'">Voltar</button>
+                <button class="btn" onclick="window.location='{% url "mecip:add_user_to_team" team.id %}'">Gerenciar Usuarios</button>
             </div>
-            
         {% endif %}
     </div>
 {% endblock content %}

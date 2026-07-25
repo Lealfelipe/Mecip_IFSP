@@ -25,12 +25,12 @@ def course(request, course_id):
     single_course = get_object_or_404(
         Course, pk=course_id,
     )
-    report = single_course.relatorios.first()
+    reports = single_course.relatorios.order_by('-year', '-id')
 
 
     context = {
         'course': single_course,
-        'report': report,
+        'reports': reports,
         'site_title': f'Curso - {single_course.type_course}',
     }
 

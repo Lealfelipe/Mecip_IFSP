@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 
 
@@ -81,6 +82,8 @@ class Question(models.Model):
     ]
 
     section = models.ForeignKey(QuestionnaireSection, on_delete=models.CASCADE, related_name='questions')
+    indicator = models.CharField(max_length=250, blank=True)
+    special_condition = models.CharField(max_length=250, blank=True)
     text = models.TextField()
     field_type = models.CharField(max_length=25, choices=QUESTION_TYPES, default='text')
     required = models.BooleanField(default=True)
@@ -127,6 +130,20 @@ class ReportQuestionAnswer(models.Model):
         return f'{self.report} - {self.question.text[:40]}'
 
 
+class ReferenceAttachment(models.Model):
+    name = models.CharField(max_length=250)
+    file = models.FileField(upload_to='reference_attachments/')
+    description = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+    created_date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Attachments(models.Model):
     answer = models.ForeignKey(
         ReportQuestionAnswer,
@@ -135,13 +152,45 @@ class Attachments(models.Model):
         blank=True,
         related_name='attachments',
     )
+    reference_attachment = models.ForeignKey(
+        ReferenceAttachment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='answer_attachments',
+    )
     name = models.CharField(max_length=250)
-    file = models.FileField(upload_to='answer_attachments/')
+    file = models.FileField(upload_to='answer_attachments/', blank=True)
     description = models.TextField(blank=True)
     created_date = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ['-created_date']
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(reference_attachment__isnull=False)
+                    | ~models.Q(file='')
+                ),
+                name='attachment_has_file_or_reference',
+            ),
+            models.UniqueConstraint(
+                fields=('answer', 'reference_attachment'),
+                condition=models.Q(reference_attachment__isnull=False),
+                name='unique_reference_attachment_per_answer',
+            ),
+        ]
+
+    @property
+    def attachment_file(self):
+        if self.reference_attachment_id:
+            return self.reference_attachment.file
+        return self.file
+
+    @property
+    def file_url(self):
+        attachment_file = self.attachment_file
+        return attachment_file.url if attachment_file else ''
 
     def __str__(self) -> str:
         return self.name
@@ -150,6 +199,10 @@ class Attachments(models.Model):
 class Report(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='relatorios')
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE)
+    year = models.PositiveSmallIntegerField(
+        'Ano',
+        validators=[MinValueValidator(1900), MaxValueValidator(9999)],
+    )
     questionnaire = models.ForeignKey(Questionnaire, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports')
     created_date = models.DateTimeField(default=timezone.now)
     assessment = models.TextField()
@@ -171,10 +224,10 @@ class Report(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pendente')
 
     class Meta:
-        unique_together = ('course', 'campus')
+        unique_together = ('course', 'campus', 'year')
 
     def __str__(self) -> str:
-        return f'{self.course} {self.campus}'
+        return f'{self.course} {self.campus} - {self.year}'
     
 class Team(models.Model):
     team_name = models.CharField(max_length=250)

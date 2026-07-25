@@ -9,7 +9,7 @@
         <p><b>Duração do Curso em Semestres:</b> {{ type_course.duration }}</p>
         <p><b>Nível:</b> {{ type_course.type_categorie.categorie }} </p>
 
-        {% if user.is_superuser %}
+        {% if can_manage_records %}
             <div class="contact-links">
                 <a class="btn btn-link" href="{% url "mecip:update_type" type_course_id=type_course.id %}">Editar</a>
             </div>

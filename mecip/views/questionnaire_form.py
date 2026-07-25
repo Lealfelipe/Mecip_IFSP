@@ -2,12 +2,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from mecip.forms import QuestionnaireForm, QuestionnaireSectionForm, QuestionForm, QuestionAnswerOptionFormSet
 from django.urls import reverse
 from mecip.models import Questionnaire, QuestionnaireSection, Question
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
+from mecip.permissions import access_required, can_manage_records
 
 
 def is_admin(user):
-    return user.is_superuser
+    return can_manage_records(user)
 
 
 def prepare_question_form(form, questionnaire):
@@ -23,7 +23,7 @@ def prepare_section_form(form, questionnaire):
 
 # ========== QUESTIONARIO ==========
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create_questionnaire(request):
     """Cria um novo questionario"""
     form_action = reverse('mecip:create_questionnaire')
@@ -63,7 +63,7 @@ def create_questionnaire(request):
     )
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update_questionnaire(request, questionnaire_id):
     """Atualiza um questionario existente"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -106,7 +106,7 @@ def update_questionnaire(request, questionnaire_id):
 
 # ========== SECAO ==========
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create_questionnaire_section(request, questionnaire_id):
     """Cria uma nova secao para um questionario"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -138,7 +138,7 @@ def create_questionnaire_section(request, questionnaire_id):
     return render(request, 'mecip/create.html', context)
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update_questionnaire_section(request, questionnaire_id, section_id):
     """Atualiza uma secao existente"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -170,7 +170,7 @@ def update_questionnaire_section(request, questionnaire_id, section_id):
     return render(request, 'mecip/create.html', context)
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def delete_questionnaire_section(request, questionnaire_id, section_id):
     """Deleta uma secao"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -182,7 +182,7 @@ def delete_questionnaire_section(request, questionnaire_id, section_id):
 
 # ========== QUESTAO ==========
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create_question(request, questionnaire_id):
     """Cria uma nova questao para um questionario"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -238,7 +238,7 @@ def create_question(request, questionnaire_id):
     )
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update_question(request, questionnaire_id, question_id):
     """Atualiza uma questao existente"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -289,7 +289,7 @@ def update_question(request, questionnaire_id, question_id):
     return render(request, 'mecip/create_question.html', context)
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def delete_question(request, questionnaire_id, question_id):
     """Deleta uma questao"""
     questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)

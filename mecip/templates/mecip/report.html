@@ -2,30 +2,82 @@
 
 {% block content %}
     <div class="single-contact">
+        <div class="contact-links">
+            <button type="button" class="section-icon-btn" onclick="window.location='{% url 'mecip:index_report' %}'" aria-label="Voltar" title="Voltar">
+                <i class="fi fi-sr-arrow-left"></i>
+            </button>
+            {% if can_manage_records %}
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url 'mecip:update_report' report_id=report.id %}'" aria-label="Editar relatorio" title="Editar relatorio">
+                    <i class="fi fi-sr-pencil"></i>
+                </button>
+            {% endif %}
+
+            {% if report.status == "Aprovado" %}
+                <button class="btn" onclick="window.location='{% url 'mecip:report_pdf_download' report_id=report.id %}'">
+                    Baixar PDF
+                </button>
+            {% endif %}
+
+            {% if can_assign %}
+                <button class="btn btn-assign" onclick="window.location='{% url 'mecip:assign_report' report_id=report.id %}'">Atribuir a mim</button>
+            {% endif %}
+
+            {% if report.questionnaire and user.is_authenticated%}
+                {% if can_manage_records %}
+                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
+                {% elif report.assigned_team and user in report.assigned_team.users.all %}
+                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
+                {% endif %}
+            {% endif %}
+        </div>
+
         <h1 class="single-contact-name">
-            Relatorio: {{ report.course.type_course }}
+            Relatorio: {{ report.course.type_course }} - {{ report.year }}
         </h1>
 
-        <div class="responsive_table">
+        <div class="responsive-table">
             <table class="contacts-table">
                 <tbody>
                     <tr class="table-row">
                         <td class="table-cel"><strong>Nome Curso</strong></td>
-                        <td class="table-cel">{{ report.course.type_course }}</td>
+                        <td class="table-cel">
+                            <span class="table-value-action">
+                                {{ report.course.type_course }}
+                                <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:course' report.course.id %}'" aria-label="Visualizar curso" title="Visualizar curso">
+                                    <i class="fi fi-sr-eye"></i>
+                                </button>
+                            </span>
+                        </td>
                     </tr>
                     <tr class="table-row">
                         <td class="table-cel"><strong>Campus</strong></td>
-                        <td class="table-cel">{{ report.campus.campus_name }}</td>
+                        <td class="table-cel">
+                            <span class="table-value-action">
+                                {{ report.campus.campus_name }}
+                                <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:campus' report.campus.id %}'" aria-label="Visualizar campus" title="Visualizar campus">
+                                    <i class="fi fi-sr-eye"></i>
+                                </button>
+                            </span>
+                        </td>
                     </tr>
                     <tr class="table-row">
                         <td class="table-cel"><strong>Cidade</strong></td>
                         <td class="table-cel">{{ report.campus.city }}</td>
                     </tr>
                     <tr class="table-row">
+                        <td class="table-cel"><strong>Ano</strong></td>
+                        <td class="table-cel">{{ report.year }}</td>
+                    </tr>
+                    <tr class="table-row">
                         <td class="table-cel"><strong>Equipe Atribuída</strong></td>
                         <td class="table-cel">
                             {% if report.assigned_team %}
-                                {{ report.assigned_team.team_name }}
+                                <span class="table-value-action">
+                                    {{ report.assigned_team.team_name }}
+                                    <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:team' report.assigned_team.id %}'" aria-label="Visualizar equipe" title="Visualizar equipe">
+                                        <i class="fi fi-sr-eye"></i>
+                                    </button>
+                                </span>
                             {% else %}
                                 Nenhuma
                             {% endif %}
@@ -53,7 +105,12 @@
                         <td class="table-cel"><strong>Questionário</strong></td>
                         <td class="table-cel">
                             {% if report.questionnaire %}
-                                {{ report.questionnaire.name }}
+                                <span class="table-value-action">
+                                    {{ report.questionnaire.name }}
+                                    <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:questionnaire' report.questionnaire.id %}'" aria-label="Visualizar questionario" title="Visualizar questionario">
+                                        <i class="fi fi-sr-eye"></i>
+                                    </button>
+                                </span>
                             {% else %}
                                 Nenhum questionario associado
                             {% endif %}
@@ -66,35 +123,6 @@
                 </tbody>
             </table>
         </div>
-
-        <div class="contact-links">
-            {% if report.status == "Aprovado" %}
-                <button class="btn" onclick="window.location='{% url 'mecip:report_pdf_download' report_id=report.id %}'">
-                    Baixar PDF
-                </button>
-            {% endif %}
-            {% if can_assign %}
-                <button class="btn btn-assign" onclick="window.location='{% url 'mecip:assign_report' report_id=report.id %}'">Atribuir a mim</button>
-            {% endif %}
-
-            {% if report.questionnaire and user.is_authenticated%}
-                {% if user.is_superuser %}
-                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
-                {% elif report.assigned_team and user in report.assigned_team.users.all %}
-                    <button class="btn" onclick="window.location='{% url 'mecip:view_questionnaire' report_id=report.id %}'">Ver Questionário</button>
-                {% endif %}                
-            {% endif %}
-            <button class="btn btn-back" onclick="window.location='{% url 'mecip:index_report' %}'">Voltar</button>
-        </div>
-
-
-        {% if user.is_superuser %}
-            <div class="contact-links">
-                <button class="btn" onclick="window.location='{% url 'mecip:update_report' report_id=report.id %}'">Editar</button>
-                <button class="btn" onclick="window.location='{% url 'mecip:campus' report.campus.id %}'">Campus</button>
-                <button class="btn" onclick="window.location='{% url 'mecip:course' report.course.id  %}'">Curso</button>
-            </div>
-        {% endif %}
 
     </div>
 {% endblock %}

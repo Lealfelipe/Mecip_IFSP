@@ -3,13 +3,13 @@ from django.core.exceptions import ValidationError
 from mecip.forms import TypeCourseForm
 from django.urls import reverse
 from mecip.models import Type_Course
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
+from mecip.permissions import access_required, can_manage_records
 
 def is_admin(user):
-    return user.is_superuser
+    return can_manage_records(user)
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create_type_course(request):
     form_action = reverse('mecip:create_type')
 
@@ -48,7 +48,7 @@ def create_type_course(request):
         context
     )
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update_type_course(request, type_course_id):
     type_course = get_object_or_404(Type_Course, pk= type_course_id)
     form_action = reverse('mecip:update_type', args=(type_course_id,))

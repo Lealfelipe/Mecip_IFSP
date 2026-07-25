@@ -1,0 +1,61 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+  <div class="container content-space-2 create-page">
+    <form class="create-form" action="{{ form_action }}" method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-header card-header-create bg-img-start">
+            <div class="flex-grow-1">
+              <h3 class="card-header-title">{{ site_title }}</h3>
+              <p class="card-text">Preencha os campos abaixo</p>
+            </div>
+          </div>
+
+          <div class="card-body">
+            {% for field in form %}
+              <div class="form-group">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+
+                {% if field.name == "file" %}
+                  <div class="custom-file-field">
+                    {{ field }}
+                  </div>
+                {% else %}
+                  {{ field }}
+                {% endif %}
+
+                {% if field.help_text %}
+                  <small class="form-text text-muted d-block mt-2">{{ field.help_text | safe }}</small>
+                {% endif %}
+
+                {{ field.errors }}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="card-footer">
+            <div class="d-flex align-items-center">
+              <button class="btn btn-white" type="button" onclick="window.location='{% url 'mecip:index_reference_attachment' %}'">Voltar</button>
+              <div class="ms-auto d-flex gap-2">
+                {% if reference_attachment and reference_attachment.file %}
+                  <button
+                    class="btn reference-current-file-button"
+                    type="button"
+                    onclick="window.open('{{ reference_attachment.file.url }}', '_blank')"
+                  >
+                    Visualizar
+                  </button>
+                {% endif %}
+                <button class="btn btn-ghost-secondary" type="reset">Limpar</button>
+                <button class="btn btn" type="submit">Enviar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock content %}

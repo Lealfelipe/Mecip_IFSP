@@ -1,10 +1,11 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.paginator import Paginator
 from mecip.models import Team
+from mecip.permissions import can_view_all_records
 
 
 def index_team(request):
-    if request.user.is_superuser:
+    if can_view_all_records(request.user):
         teams = Team.objects.order_by('-id')
     else:
         teams = Team.objects.filter(users=request.user).order_by('-id')
@@ -27,7 +28,7 @@ def index_team(request):
 
 def team(request, team_id):
     # Para usuários não superuser, garante que só vejam equipes onde estão inscritos
-    if request.user.is_superuser:
+    if can_view_all_records(request.user):
         single_team = get_object_or_404(Team, pk=team_id)
     else:
         single_team = get_object_or_404(Team, pk=team_id, users=request.user)

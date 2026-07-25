@@ -1,14 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from mecip.forms import ReportForm, ReportQuestionAnswerForm, AttachmentFormSet
 from django.urls import reverse
-from mecip.models import Report, Course, Campus, Question, ReportQuestionAnswer, Type_Course, QuestionAnswerOption
+from mecip.models import Report, Course, Campus, Question, ReportQuestionAnswer, Type_Course, QuestionAnswerOption, ReferenceAttachment, Attachments
 from django.contrib import messages
 from django.http import JsonResponse
+from mecip.permissions import access_required, can_answer_report, can_manage_records, can_view_report_questionnaire
 
-# from django.contrib.auth.decorators import user_passes_test
-
+@access_required(can_manage_records)
 def create_report(request):
     form_action = reverse('mecip:create_report')
 
@@ -44,6 +44,7 @@ def create_report(request):
         context
     )
 
+@access_required(can_manage_records)
 def create_report_params(request, course_id, campus_id):
     course = get_object_or_404(Course, pk=course_id)
     campus = get_object_or_404(Campus, pk=campus_id)
@@ -68,6 +69,7 @@ def create_report_params(request, course_id, campus_id):
     return render(request, 'mecip/create.html', context)
 
 
+@access_required(can_manage_records)
 def update_report(request, report_id):
     report = get_object_or_404(Report, pk= report_id)
     form_action = reverse('mecip:update_report', args=(report_id,))
@@ -83,7 +85,11 @@ def update_report(request, report_id):
             return redirect('mecip:update_report', report_id=report.id)
 
         else:
-            messages.error(request, 'Erro ao alterar o relatorio. Ja existe um relatorio para o curso e campus.')
+            messages.error(
+                request,
+                'Erro ao alterar o relatorio. Verifique se ja existe um '
+                'relatorio para o mesmo curso, campus e ano.'
+            )
 
             context = {
             'form': form,
@@ -114,12 +120,8 @@ def answer_questionnaire(request, report_id):
         messages.error(request, 'Voce precisa estar logado para responder o questionario.')
         return redirect('mecip:report', report_id=report_id)
 
-    if report.assigned_user and report.assigned_user != request.user and not request.user.is_superuser:
-        messages.error(request, 'Apenas o usuario atribuido pode responder o questionario.')
-        return redirect('mecip:report', report_id=report_id)
-
-    if report.assigned_user is None and not request.user.is_superuser:
-        messages.error(request, 'Relatorio ainda nao foi atribuido a um usuario. So o usuario atribuido pode responder.')
+    if not can_answer_report(request.user, report):
+        messages.error(request, 'Somente usuario da equipe atribuida ou coordenador pode responder o questionario.')
         return redirect('mecip:report', report_id=report_id)
 
     if report.questionnaire is None:
@@ -134,17 +136,21 @@ def answer_questionnaire(request, report_id):
         'selected_answer_option',
     ).prefetch_related(
         'question__answer_options',
-        'attachments',
+        Prefetch(
+            'attachments',
+            queryset=Attachments.objects.select_related('reference_attachment'),
+        ),
     ).order_by('question__section__order', 'question__order')
     answers_list = list(answers)
     total_questions = len(answers_list)
     current_index = int(request.GET.get('pergunta', 1) or 1)
     current_index = max(1, min(current_index, total_questions or 1))
     current_answer = answers_list[current_index - 1] if total_questions else None
+    reference_attachments = ReferenceAttachment.objects.filter(active=True).order_by('name')
     question_steps = [
         {
             'number': index + 1,
-            'title': f'Pergunta {index + 1}',
+            'title': answer.question.indicator or f'Pergunta {index + 1}',
             'is_current': index + 1 == current_index,
             'is_completed': bool(answer.answer and answer.answer.strip()),
         }
@@ -175,14 +181,30 @@ def answer_questionnaire(request, report_id):
             instance=current_answer,
             prefix=f'attachments_{current_answer.id}',
         )
+        selected_reference_attachment_ids = request.POST.getlist('selected_reference_attachments')
 
         if attachment_formset.is_valid():
             attachment_formset.save()
+            if selected_reference_attachment_ids:
+                selected_reference_attachments = ReferenceAttachment.objects.filter(
+                    id__in=selected_reference_attachment_ids,
+                    active=True,
+                )
+                for reference_attachment in selected_reference_attachments:
+                    Attachments.objects.get_or_create(
+                        answer=current_answer,
+                        reference_attachment=reference_attachment,
+                        defaults={
+                            'name': reference_attachment.name,
+                            'description': reference_attachment.description,
+                        },
+                    )
         else:
             context = {
                 'report': report,
                 'answer': current_answer,
                 'attachment_formset': attachment_formset,
+                'reference_attachments': reference_attachments,
                 'current_index': current_index,
                 'total_questions': total_questions,
                 'previous_index': current_index - 1,
@@ -222,6 +244,7 @@ def answer_questionnaire(request, report_id):
         'report': report,
         'answer': current_answer,
         'attachment_formset': attachment_formset,
+        'reference_attachments': reference_attachments,
         'current_index': current_index,
         'total_questions': total_questions,
         'previous_index': current_index - 1,
@@ -241,14 +264,9 @@ def view_questionnaire(request, report_id):
         messages.error(request, 'Voce precisa estar logado para ver o questionario.')
         return redirect('mecip:report', report_id=report_id)
 
-    if not request.user.is_superuser:
-        if report.assigned_team is None:
-            messages.error(request, 'Relatorio nao tem equipe atribuida para visualizacao do questionario.')
-            return redirect('mecip:report', report_id=report_id)
-
-        if not report.assigned_team.users.filter(pk=request.user.pk).exists():
-            messages.error(request, 'Somente membro da equipe atribuida pode ver o questionario.')
-            return redirect('mecip:report', report_id=report_id)
+    if not can_view_report_questionnaire(request.user, report):
+        messages.error(request, 'Somente membro da equipe atribuida ou coordenador pode ver o questionario.')
+        return redirect('mecip:report', report_id=report_id)
 
     if report.questionnaire is None:
         messages.error(request, 'Este relatorio nao tem questionario associado.')
@@ -260,9 +278,14 @@ def view_questionnaire(request, report_id):
         'question',
         'question__section',
         'selected_answer_option',
-    ).prefetch_related('attachments').order_by('question__section__order', 'question__order')
+    ).prefetch_related(
+        Prefetch(
+            'attachments',
+            queryset=Attachments.objects.select_related('reference_attachment'),
+        ),
+    ).order_by('question__section__order', 'question__order')
 
-    can_answer = request.user.is_superuser or (report.assigned_user is not None and report.assigned_user == request.user)
+    can_answer = can_answer_report(request.user, report)
     status_to_respond = report.status == "Em andamento" or report.status == "Pendente ajuste"
 
     # Verificar se todas as questoes tem resposta
@@ -286,14 +309,9 @@ def advance_report_status(request, report_id):
         messages.error(request, 'Voce precisa estar logado para avancar o status do relatorio.')
         return redirect('mecip:report', report_id=report_id)
 
-    if not request.user.is_superuser:
-        if report.assigned_team is None:
-            messages.error(request, 'Relatorio nao tem equipe atribuida.')
-            return redirect('mecip:report', report_id=report_id)
-
-        if not report.assigned_team.users.filter(pk=request.user.pk).exists():
-            messages.error(request, 'Somente membro da equipe atribuida pode avancar o status.')
-            return redirect('mecip:report', report_id=report_id)
+    if not can_answer_report(request.user, report):
+        messages.error(request, 'Somente membro da equipe atribuida ou coordenador pode avancar o status.')
+        return redirect('mecip:report', report_id=report_id)
 
     # Verificar se todas as respostas estao preenchidas
     report_questions = _get_report_questions(report)
@@ -317,8 +335,8 @@ def change_report_status(request, report_id, action):
         messages.error(request, 'Voce precisa estar logado para alterar o status do relatorio.')
         return redirect('mecip:view_questionnaire', report_id=report_id)
 
-    if not request.user.is_superuser:
-        messages.error(request, 'Apenas coordenadores podem alterar o status do relatorio.')
+    if not can_manage_records(request.user):
+        messages.error(request, 'Apenas coordenadores ou super administradores podem alterar o status do relatorio.')
         return redirect('mecip:view_questionnaire', report_id=report_id)
 
     allowed_actions = {

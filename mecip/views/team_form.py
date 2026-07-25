@@ -4,13 +4,13 @@ from mecip.forms import TeamForm
 from django.urls import reverse
 from mecip.models import Team
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
+from mecip.permissions import access_required, can_manage_records
 
 def is_admin(user):
-    return user.is_superuser
+    return can_manage_records(user)
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create_team(request):
     form_action = reverse('mecip:create_team')
 
@@ -49,7 +49,7 @@ def create_team(request):
         context
     )
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update_team(request, team_id):
     team = get_object_or_404(Team, pk= team_id)
     form_action = reverse('mecip:update_team', args=(team_id,))
@@ -90,7 +90,7 @@ def update_team(request, team_id):
     )
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def add_user_to_team(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
     
@@ -146,7 +146,7 @@ def add_user_to_team(request, team_id):
     return render(request, 'mecip/add_user_to_team.html', context)
 
  
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def remove_user_from_team(request, team_id, user_id):
     team = get_object_or_404(Team, pk=team_id)
     user = get_object_or_404(User, pk=user_id)

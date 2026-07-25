@@ -3,13 +3,13 @@ from django.core.exceptions import ValidationError
 from mecip.forms import CampusForm
 from django.urls import reverse
 from mecip.models import Campus
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
+from mecip.permissions import access_required, can_manage_records
 
 def is_admin(user):
-    return user.is_superuser
+    return can_manage_records(user)
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def create(request):
     form_action = reverse('mecip:create')
 
@@ -49,7 +49,7 @@ def create(request):
     )
 
 
-@user_passes_test(is_admin)
+@access_required(is_admin)
 def update(request, campus_id):
     campus = get_object_or_404(Campus, pk= campus_id)
     form_action = reverse('mecip:update', args=(campus_id,))

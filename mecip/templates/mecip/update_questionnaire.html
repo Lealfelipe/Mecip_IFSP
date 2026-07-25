@@ -39,21 +39,23 @@
     {% if questionnaire.pk %}
         <div class="questionnaire-related-content">
             {% if sections %}
-                <div class="responsive_table">
+                <div class="responsive-table">
                     <table class="contacts-table">
                         <caption class="table-caption">
-                            {% if user.is_superuser %}
+                            {% if can_manage_records %}
                                 <button class="btn" onclick="window.location='{% url "mecip:create_questionnaire_section" questionnaire.id %}'">Criar Seção</button>
                                 <button class="btn" onclick="window.location='{% url "mecip:create_question" questionnaire.id %}'">Criar Questão</button>
                             {% endif %}
                         </caption>
                         <thead>
                             <tr class="table-row table-row-header">
-                                <th class="table-title" colspan="6">Seções e Questões do Questionário</th>
+                                <th class="table-title" colspan="8">Seções e Questões do Questionário</th>
                             </tr>
                             <tr class="table-row table-row-header">
                                 <th class="table-header">Seção</th>
                                 <th class="table-header">Ordem</th>
+                                <th class="table-header">Indicador</th>
+                                <th class="table-header">CondiÃ§Ã£o especial</th>
                                 <th class="table-header">Pergunta</th>
                                 <th class="table-header">Tipo</th>
                                 <th class="table-header">Obrigatória</th>
@@ -64,7 +66,7 @@
                         <tbody>
                             {% for section in sections %}
                                 <tr class="table-row questionnaire-section-row" data-section-header="{{ section.id }}">
-                                    <th class="table-cel questionnaire-section-cell" colspan="6">
+                                    <th class="table-cel questionnaire-section-cell" colspan="8">
                                         <button type="button" class="section-toggle" data-section-toggle="{{ section.id }}" aria-expanded="true">
                                             <i class="fi fi-sr-angle-small-down"></i>
                                             <span>{{ section.order }} - {{ section.name }}</span>
@@ -79,7 +81,7 @@
                                             {% endfor %}
                                         </small>
 
-                                        {% if user.is_superuser %}
+                                        {% if can_manage_records %}
                                             <span class="section-actions">
                                                 <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_questionnaire_section" questionnaire.id section.id %}'" aria-label="Editar seção" title="Editar seção">
                                                     <i class="fi fi-sr-pencil"></i>
@@ -95,6 +97,8 @@
                                     <tr class="table-row" data-section-question="{{ section.id }}">
                                         <td class="table-cel">{{ section.name }}</td>
                                         <td class="table-cel">{{ question.order }}</td>
+                                        <td class="table-cel">{{ question.indicator|default:"---" }}</td>
+                                        <td class="table-cel">{{ question.special_condition|default:"---" }}</td>
                                         <td class="table-cel">{{ question.text|truncatewords:10 }}</td>
                                         <td class="table-cel">{{ question.get_field_type_display }}</td>
                                         <td class="table-cel">
@@ -117,7 +121,7 @@
                                     </tr>
                                 {% empty %}
                                     <tr class="table-row" data-section-question="{{ section.id }}">
-                                        <td class="table-cel" colspan="6">Nenhuma questão cadastrada nesta seção.</td>
+                                        <td class="table-cel" colspan="8">Nenhuma questão cadastrada nesta seção.</td>
                                     </tr>
                                 {% endfor %}
                             {% endfor %}
@@ -126,7 +130,7 @@
                 </div>
             {% else %}
                 <p>Nenhuma seção cadastrada.</p>
-                {% if user.is_superuser %}
+                {% if can_manage_records %}
                     <div class="contact-links">
                         <a class="btn" href="{% url "mecip:create_questionnaire_section" questionnaire.id %}">+ Seção</a>
                         <a class="btn" href="{% url "mecip:create_question" questionnaire.id %}">+ Questão</a>
@@ -152,3 +156,5 @@
     </script>
 
 {% endblock content %}
+
+

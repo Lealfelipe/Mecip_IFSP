@@ -1,9 +1,10 @@
 from typing import Any
-from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, QuestionnaireSection, Question, ReportQuestionAnswer, Attachments, QuestionAnswerOption
+from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, QuestionnaireSection, Question, ReportQuestionAnswer, Attachments, QuestionAnswerOption, ReferenceAttachment
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from mecip.permissions import ROLE_EQUIPE, assign_role
 
 
 class CampusForm(forms.ModelForm):
@@ -160,6 +161,12 @@ class RegisterForm(UserCreationForm):
 
         return email
 
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            assign_role(user, ROLE_EQUIPE)
+        return user
+
 class CustomAuthenticationForm(AuthenticationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -177,10 +184,11 @@ class ReportForm(forms.ModelForm):
     class Meta:
         model = Report
         fields = (
-            'type_course', 'campus', 'questionnaire', 'assessment', 'assigned_team', 'assigned_user', 'due_date', 'notes', 'status'
+            'type_course', 'campus', 'year', 'questionnaire', 'assessment', 'assigned_team', 'assigned_user', 'due_date', 'notes', 'status'
         )
         labels = {
             'campus': 'Campus Pertencente',
+            'year': 'Ano',
             'questionnaire': 'Questionário',
             'assessment': 'Avaliação',
             'assigned_team': 'Equipe Atribuída',
@@ -214,18 +222,24 @@ class ReportForm(forms.ModelForm):
         cleaned_data = super().clean()
         type_course = cleaned_data.get('type_course')
         campus = cleaned_data.get('campus')
+        year = cleaned_data.get('year')
 
-        if type_course and campus:
+        if type_course and campus and year:
             course = Course.objects.filter(type_course=type_course, campus=campus).first()
             if not course:
                 msg = ValidationError('Curso nao disponivel nesse Campus')
                 self.add_error('type_course', msg)
                 self.add_error('campus', msg)
                 return cleaned_data
-            if Report.objects.filter(course=course, campus=campus).exclude(pk=self.instance.pk).exists():
-                msg = ValidationError('Relatorio para este curso e campus ja existe.')
+            if Report.objects.filter(
+                course=course,
+                campus=campus,
+                year=year,
+            ).exclude(pk=self.instance.pk).exists():
+                msg = ValidationError('Relatorio para este curso, campus e ano ja existe.')
                 self.add_error('type_course', msg)
                 self.add_error('campus', msg)
+                self.add_error('year', msg)
 
         return cleaned_data
 
@@ -257,6 +271,27 @@ class QuestionnaireForm(forms.ModelForm):
         }
 
 
+class ReferenceAttachmentForm(forms.ModelForm):
+    class Meta:
+        model = ReferenceAttachment
+        fields = ('name', 'file', 'description', 'active')
+        labels = {
+            'name': 'Nome do anexo',
+            'file': 'Arquivo',
+            'description': 'Descricao',
+            'active': 'Ativo',
+        }
+        widgets = {
+            'file': forms.FileInput,
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['file'].required = False
+
+
 class QuestionnaireSectionForm(forms.ModelForm):
     class Meta:
         model = QuestionnaireSection
@@ -275,9 +310,11 @@ class QuestionnaireSectionForm(forms.ModelForm):
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
-        fields = ('section', 'text', 'field_type', 'required', 'order', 'choices')
+        fields = ('section', 'indicator', 'special_condition', 'text', 'field_type', 'required', 'order', 'choices')
         labels = {
             'section': 'Seção',
+            'indicator': 'Indicador',
+            'special_condition': 'Condição especial',
             'text': 'Pergunta',
             'field_type': 'Tipo',
             'required': 'Obrigatória',
@@ -320,6 +357,33 @@ class AttachmentForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['file'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not self.has_changed():
+            return cleaned_data
+
+        file = cleaned_data.get('file')
+
+        if not file and not self.instance.pk:
+            self.add_error('file', ValidationError('Selecione um arquivo.'))
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        if self.cleaned_data.get('file'):
+            instance.reference_attachment = None
+
+        if commit:
+            instance.save()
+
+        return instance
 
 
 AttachmentFormSet = forms.inlineformset_factory(

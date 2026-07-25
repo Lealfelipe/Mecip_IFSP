@@ -2,7 +2,7 @@
 
 {% block content %}
     <div class="single-contact">
-        {% if user.is_superuser %}
+        {% if can_manage_records %}
             <div class="contact-links">
                 <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:index_questionnaire" %}'" aria-label="Voltar" title="Voltar">
                     <i class="fi fi-sr-arrow-left"></i>
@@ -12,7 +12,7 @@
                 </button>
             </div>
         {% endif %}
-        <div class="responsive_table">
+        <div class="responsive-table">
             <table class="contacts-table">
                 <tbody>
                     <tr class="table-row">
@@ -21,7 +21,18 @@
                     </tr>
                     <tr class="table-row">
                         <th class="table-header">Campus</th>
-                        <td class="table-cel">{{ questionnaire.campus.campus_name|default:"---" }}</td>
+                        <td class="table-cel">
+                            {% if questionnaire.campus %}
+                                <span class="table-value-action">
+                                    {{ questionnaire.campus.campus_name }}
+                                    <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:campus' questionnaire.campus.id %}'" aria-label="Visualizar campus" title="Visualizar campus">
+                                        <i class="fi fi-sr-eye"></i>
+                                    </button>
+                                </span>
+                            {% else %}
+                                ---
+                            {% endif %}
+                        </td>
                     </tr>
                     <tr class="table-row">
                         <th class="table-header">Descrição</th>
@@ -47,7 +58,7 @@
     </div>
 
     {% if sections %}
-        <div class="responsive_table">
+        <div class="responsive-table">
             <table class="contacts-table">
                 <caption class="table-caption">
                     Seções e Questões
@@ -57,6 +68,8 @@
                         <th class="table-header">Seção</th>
                         <th class="table-header">Equipes</th>
                         <th class="table-header">Ordem</th>
+                        <th class="table-header">Indicador</th>
+                        <th class="table-header">Condição especial</th>
                         <th class="table-header">Pergunta</th>
                         <th class="table-header">Tipo</th>
                         <th class="table-header">Obrigatória</th>
@@ -66,7 +79,7 @@
                 <tbody>
                     {% for section in sections %}
                         <tr class="table-row questionnaire-section-row" data-section-header="{{ section.id }}">
-                            <th class="table-cel questionnaire-section-cell" colspan="6">
+                            <th class="table-cel questionnaire-section-cell" colspan="8">
                                 <button type="button" class="section-toggle" data-section-toggle="{{ section.id }}" aria-expanded="true">
                                     <i class="fi fi-sr-angle-small-down"></i>
                                     <span>{{ section.name }}</span>
@@ -93,6 +106,8 @@
                                     {% endfor %}
                                 </td>
                                 <td class="table-cel">{{ question.order }}</td>
+                                <td class="table-cel">{{ question.indicator|default:"---" }}</td>
+                                <td class="table-cel">{{ question.special_condition|default:"---" }}</td>
                                 <td class="table-cel">
                                     <a class="table-link"
                                     href="{% url "mecip:update_question" questionnaire.id question.id %}">
@@ -118,7 +133,7 @@
                                         Todas
                                     {% endfor %}
                                 </td>
-                                <td class="table-cel" colspan="4">Nenhuma questão cadastrada nesta seção.</td>
+                                <td class="table-cel" colspan="6">Nenhuma questão cadastrada nesta seção.</td>
                             </tr>
                         {% endfor %}
                     {% endfor %}

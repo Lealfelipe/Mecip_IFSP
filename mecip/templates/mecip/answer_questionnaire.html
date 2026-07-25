@@ -35,8 +35,8 @@
 
         <section class="questionnaire-card">
             <div class="questionnaire-card-header">
-                <span>Step {{ current_index }} of {{ total_questions }}</span>
-                <h3>Pergunta {{ current_index }}</h3>
+                <span>Pergunta {{ current_index }} de {{ total_questions }}</span>
+                <h3>{{ answer.question.indicator }}</h3>
             </div>
 
             <form id="questionnaire-answer-form" method="post" action="" enctype="multipart/form-data">
@@ -44,7 +44,13 @@
                 <div class="form-content questionnaire-card-body">
                     {% if answer %}
                         <div class="form-group">
-                            <label for="id_answer_{{ answer.id }}">{{ answer.question.text }}{% if answer.question.required %} *{% endif %}</label>
+                            {% comment %} {% if answer.question.indicator %}
+                                <small class="question-indicator">{{ answer.question.indicator }}</small>
+                            {% endif %} {% endcomment %}
+                            <label class="question-text" for="id_answer_{{ answer.id }}">{{ answer.question.text }}{% if answer.question.required %} *{% endif %}</label>
+                            {% if answer.question.special_condition %}
+                                <small class="question-special-condition">Condição especial: {{ answer.question.special_condition }}</small>
+                            {% endif %}
 
                             {% if answer.question.answer_options.exists %}
                                 <div class="answer-options-inline">
@@ -61,6 +67,7 @@
                                     </label>
                                 {% endfor %}
                                 </div>
+                                <span class="acceptance-criteria-label">Critério de aceitação:</span>
                                 <div id="criteria_{{ answer.id }}" class="acceptance-criteria"></div>
                             {% else %}
                                 <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer }}</textarea>
@@ -92,7 +99,7 @@
                                                     {% endif %}
 
                                                     <div class="saved-attachment-summary">
-                                                        <a href="{{ attachment_form.instance.file.url }}" target="_blank" rel="noopener noreferrer">
+                                                        <a href="{{ attachment_form.instance.file_url }}" target="_blank" rel="noopener noreferrer">
                                                             {{ attachment_form.instance.name }}
                                                         </a>
                                                         {% if attachment_form.instance.description %}
@@ -145,13 +152,36 @@
                                                 </button>
                                             </div>
                                             {{ attachment_form.id }}
+                                            {{ attachment_form.non_field_errors }}
+                                            {{ attachment_form.name.errors }}
                                             {{ attachment_form.name.label_tag }}
                                             {{ attachment_form.name }}
 
-                                            <label for="{{ attachment_form.file.id_for_label }}">Arquivo</label>
-                                            <div class="custom-file-field">
-                                                {{ attachment_form.file }}
+                                            <div class="reference-attachment-picker" data-reference-picker>
+                                                <label>Anexo de referencia</label>
+                                                <div class="reference-file-field">
+                                                    <span class="reference-file-status" data-selected-reference-list>
+                                                        Nenhum arquivo selecionado
+                                                    </span>
+                                                    <button type="button" class="reference-file-button" data-open-reference-modal>
+                                                        Selecionar arquivo da base
+                                                    </button>
+                                                </div>
+                                                <div data-selected-reference-inputs></div>
                                             </div>
+
+                                            <div class="upload-attachment-fields" data-upload-fields>
+                                                {{ attachment_form.file.errors }}
+                                                <label for="{{ attachment_form.file.id_for_label }}">Arquivo</label>
+                                                <div class="custom-file-field">
+                                                    {{ attachment_form.file }}
+                                                </div>
+                                            </div>
+
+                                            <label class="attachment-upload-check">
+                                                <input type="checkbox" data-toggle-upload>
+                                                Selecionar novo arquivo
+                                            </label>
 
                                             {{ attachment_form.description.label_tag }}
                                             {{ attachment_form.description }}
@@ -227,6 +257,58 @@
         </div>
     </div>
 
+    <div class="attachment-modal-backdrop" id="reference-attachment-modal" hidden>
+        <div class="attachment-modal attachment-modal-large" role="dialog" aria-modal="true" aria-labelledby="reference-attachment-title">
+            <div class="attachment-modal-header">
+                <h3 id="reference-attachment-title">Selecionar anexos da base</h3>
+            </div>
+            <div class="attachment-modal-body">
+                {% if reference_attachments %}
+                    <div class="reference-attachment-table-wrapper">
+                        <table class="reference-attachment-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Nome</th>
+                                    <th>Descricao</th>
+                                    <th>Arquivo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reference_attachment in reference_attachments %}
+                                    <tr>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                value="{{ reference_attachment.id }}"
+                                                data-reference-option
+                                                data-reference-name="{{ reference_attachment.name }}"
+                                                data-reference-description="{{ reference_attachment.description|default:'' }}"
+                                            >
+                                        </td>
+                                        <td>{{ reference_attachment.name }}</td>
+                                        <td>{{ reference_attachment.description|default:"---" }}</td>
+                                        <td>
+                                            <a href="{{ reference_attachment.file.url }}" target="_blank" rel="noopener noreferrer">
+                                                Visualizar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="reference-attachment-empty">Nenhum anexo de referencia cadastrado.</p>
+                {% endif %}
+            </div>
+            <div class="attachment-modal-footer">
+                <button type="button" class="btn btn-back" id="cancel-reference-attachment">Cancelar</button>
+                <button type="button" class="btn" id="confirm-reference-attachment">Selecionar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.querySelectorAll('input[type="radio"][data-criteria]').forEach((input) => {
             const updateCriteria = () => {
@@ -250,6 +332,73 @@
                 showAttachmentFields.hidden = true;
             });
         }
+
+        document.querySelectorAll('[data-new-attachment-card]').forEach((card) => {
+            const referencePicker = card.querySelector('[data-reference-picker]');
+            const uploadFields = card.querySelector('[data-upload-fields]');
+            const nameField = card.querySelector('input[name$="-name"]');
+            const uploadToggle = card.querySelector('[data-toggle-upload]');
+
+            const syncAttachmentSource = () => {
+                const useReference = !uploadToggle?.checked;
+
+                if (referencePicker) referencePicker.hidden = !useReference;
+                if (uploadFields) uploadFields.hidden = useReference;
+                if (uploadToggle) uploadToggle.checked = !useReference;
+            };
+
+            uploadToggle?.addEventListener('change', () => {
+                const useUpload = uploadToggle.checked;
+                if (useUpload && nameField && !nameField.value) nameField.value = 'Novo anexo';
+
+                if (useUpload) {
+                    const selectedReferenceInputs = card.querySelector('[data-selected-reference-inputs]');
+                    const selectedReferenceList = card.querySelector('[data-selected-reference-list]');
+                    if (selectedReferenceInputs) selectedReferenceInputs.innerHTML = '';
+                    if (selectedReferenceList) selectedReferenceList.textContent = 'Nenhum arquivo selecionado';
+                }
+
+                syncAttachmentSource();
+            });
+
+            syncAttachmentSource();
+        });
+
+        const referenceModal = document.getElementById('reference-attachment-modal');
+        const cancelReferenceAttachment = document.getElementById('cancel-reference-attachment');
+        const confirmReferenceAttachment = document.getElementById('confirm-reference-attachment');
+        const selectedReferenceInputs = document.querySelector('[data-selected-reference-inputs]');
+        const selectedReferenceList = document.querySelector('[data-selected-reference-list]');
+
+        document.querySelectorAll('[data-open-reference-modal]').forEach((button) => {
+            button.addEventListener('click', () => {
+                referenceModal.hidden = false;
+            });
+        });
+
+        cancelReferenceAttachment.addEventListener('click', () => {
+            referenceModal.hidden = true;
+        });
+
+        confirmReferenceAttachment.addEventListener('click', () => {
+            const selectedOptions = Array.from(document.querySelectorAll('[data-reference-option]:checked'));
+
+            selectedReferenceInputs.innerHTML = '';
+            selectedOptions.forEach((option) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_reference_attachments';
+                input.value = option.value;
+                selectedReferenceInputs.appendChild(input);
+            });
+
+            selectedReferenceList.textContent = selectedOptions.length
+                ? selectedOptions.map((option) => option.dataset.referenceName).join(', ')
+                : 'Nenhum arquivo selecionado';
+
+            referenceModal.hidden = true;
+            formHasUnsavedChanges = true;
+        });
 
         questionnaireForm.addEventListener('input', () => {
             formHasUnsavedChanges = true;

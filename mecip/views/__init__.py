@@ -11,3 +11,4 @@ from .team_form import *
 from .team_view import *
 from .questionnaire_form import *
 from .questionnaire_view import *
+from .reference_attachment_form import *

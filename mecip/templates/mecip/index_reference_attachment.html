@@ -1,0 +1,126 @@
+{% extends "global/base.html" %}
+
+{% block content %}
+    <div class="contact-actions contact-actions-spaced">
+        <button class="btn" onclick="window.location='{% url 'mecip:create_reference_attachment' %}'">Criar Anexo</button>
+    </div>
+
+    {% if page_obj %}
+        <div class="responsive-table">
+            <table class="contacts-table">
+                <caption class="table-caption">
+                    Anexos de referencia
+                </caption>
+                <thead class="thead-light">
+                    <tr class="table-row table-row-header">
+                        <th scope="col" class="table-header">Nome</th>
+                        <th scope="col" class="table-header">Descricao</th>
+                        <th scope="col" class="table-header">Arquivo</th>
+                        <th scope="col" class="table-header">Status</th>
+                        <th scope="col" class="table-header">Data de Criacao</th>
+                        <th scope="col" class="table-header">Acoes</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for attachment in page_obj %}
+                        <tr class="table-row">
+                            <td class="table-cel">
+                                <a class="table-link" href="{% url 'mecip:update_reference_attachment' attachment.id %}">
+                                    {{ attachment.name }}
+                                </a>
+                            </td>
+                            <td class="table-cel">
+                                {{ attachment.description|default:"---" }}
+                            </td>
+                            <td class="table-cel">
+                                <a class="table-link" href="{{ attachment.file.url }}" target="_blank" rel="noopener noreferrer">
+                                    Visualizar
+                                </a>
+                            </td>
+                            <td class="table-cel">
+                                {% if attachment.active %}
+                                    <span class="status-positive">Ativo</span>
+                                {% else %}
+                                    <span class="status-negative">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cel">
+                                {{ attachment.created_date|date:"d/m/Y" }}
+                            </td>
+                            <td class="table-cel">
+                                <div class="reference-attachment-actions">
+                                    <a
+                                        class="attachment-icon-btn"
+                                        href="{% url 'mecip:update_reference_attachment' attachment.id %}"
+                                        aria-label="Editar anexo"
+                                        title="Editar anexo"
+                                    >
+                                        <i class="fi fi-sr-pencil"></i>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        class="attachment-icon-btn attachment-icon-danger"
+                                        data-open-reference-delete-modal
+                                        data-delete-url="{% url 'mecip:delete_reference_attachment' attachment.id %}"
+                                        data-attachment-name="{{ attachment.name }}"
+                                        aria-label="Excluir anexo"
+                                        title="Excluir anexo"
+                                    >
+                                        <i class="fi fi-sr-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="single-contact">
+            <h1 class="single-contact-name">
+                Nenhum anexo de referencia encontrado.
+            </h1>
+        </div>
+    {% endif %}
+
+    <div class="attachment-modal-backdrop" id="reference-delete-modal" hidden>
+        <div class="attachment-modal" role="dialog" aria-modal="true" aria-labelledby="reference-delete-title">
+            <div class="attachment-modal-header">
+                <h3 id="reference-delete-title">Excluir anexo de referencia</h3>
+            </div>
+            <div class="attachment-modal-body">
+                <p>Deseja realmente excluir este anexo?</p>
+                <strong id="reference-delete-name"></strong>
+            </div>
+            <div class="attachment-modal-footer">
+                <button type="button" class="btn btn-back" id="cancel-reference-delete">Cancelar</button>
+                <form id="reference-delete-form" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-delete">Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const referenceDeleteModal = document.getElementById('reference-delete-modal');
+        const referenceDeleteName = document.getElementById('reference-delete-name');
+        const referenceDeleteForm = document.getElementById('reference-delete-form');
+        const cancelReferenceDelete = document.getElementById('cancel-reference-delete');
+
+        document.querySelectorAll('[data-open-reference-delete-modal]').forEach((button) => {
+            button.addEventListener('click', () => {
+                referenceDeleteName.textContent = button.dataset.attachmentName || '';
+                referenceDeleteForm.action = button.dataset.deleteUrl;
+                referenceDeleteModal.hidden = false;
+            });
+        });
+
+        cancelReferenceDelete.addEventListener('click', () => {
+            referenceDeleteForm.action = '';
+            referenceDeleteName.textContent = '';
+            referenceDeleteModal.hidden = true;
+        });
+    </script>
+{% endblock content %}

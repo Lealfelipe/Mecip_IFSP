@@ -46,6 +46,12 @@ urlpatterns = [
     path('api/campus/<int:campus_id>/courses/', views.get_courses_for_campus, name='get_courses_for_campus'),
     path('dashboard/', views.dashboard, name='dashboard'),
 
+    # Base de Anexos de Referencia
+    path('anexos-referencia/', views.index_reference_attachment, name='index_reference_attachment'),
+    path('anexos-referencia/criar/', views.create_reference_attachment, name='create_reference_attachment'),
+    path('anexos-referencia/<int:reference_attachment_id>/editar/', views.update_reference_attachment, name='update_reference_attachment'),
+    path('anexos-referencia/<int:reference_attachment_id>/excluir/', views.delete_reference_attachment, name='delete_reference_attachment'),
+
     # Criar Equipe
     path('equipe/', views.index_team, name='index_team'),
     path('equipe/<int:team_id>/', views.team, name='team'),

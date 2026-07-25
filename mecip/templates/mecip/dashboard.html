@@ -80,13 +80,14 @@
     </section>
 
     <section class="dashboard-table">
-        <div class="responsive_table">
+        <div class="responsive-table">
             <table class="contacts-table">
                 <caption class="table-caption">{% if selected_status %}Relatórios: {{ selected_status }}{% else %}Relatórios: Todos{% endif %}</caption>
                 <thead>
                     <tr class="table-row table-row-header">
                         <th class="table-header">Curso</th>
                         <th class="table-header">Campus</th>
+                        <th class="table-header table-year">Ano</th>
                         <th class="table-header">Cidade Campus</th>
                         <th class="table-header">Equipe</th>
                         <th class="table-header">Status</th>
@@ -100,6 +101,7 @@
                                 <a class="table-link" href="{% url 'mecip:report' report.id %}">{{ report.course.type_course }}</a>
                             </td>
                             <td class="table-cel">{{ report.campus.campus_name }}</td>
+                            <td class="table-cel table-year">{{ report.year }}</td>
                             <td class="table-cel">{{ report.campus.city }}</td>
                             <td class="table-cel">{{ report.assigned_team.team_name}}</td>
                             <td class="table-cel">{{ report.status }}</td>
@@ -107,7 +109,7 @@
                         </tr>
                     {% empty %}
                         <tr class="table-row">
-                            <td class="table-cel" colspan="6">Nenhum relatório encontrado para o filtro atual.</td>
+                            <td class="table-cel" colspan="7">Nenhum relatório encontrado para o filtro atual.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

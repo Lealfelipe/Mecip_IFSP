@@ -2,22 +2,58 @@
 
 {% block content %}
     <div class="single-contact">
-        <h1 class="single-contact-name">
-            {{ campus.first_name }} {{ campus.last_name }} 
-        </h1>
-        <p><b>Nome Campus:</b> {{ campus.campus_name }}</p>
-        <p><b>Cidade:</b> {{ campus.city }}</p>
-        <p><b>Rua:</b> {{ campus.street }}</p>
-        <p><b>Numero:</b> {{ campus.number }}</p>
-        <p><b>Bairro:</b> {{ campus.neighborhood }}</p>
-        <p><b>Numero de Contato:</b> {{ campus.contact_number }}</p>
-        <p><b>E-mail:</b> {{ campus.email_campus }}</p>
-        <p><b>Created Date:</b> {{ campus.created_date }}</p>
+        <div class="contact-links">
+            <button type="button" class="section-icon-btn" onclick="window.location='{% url 'mecip:index' %}'" aria-label="Voltar" title="Voltar">
+                <i class="fi fi-sr-arrow-left"></i>
+            </button>
+            {% if can_manage_records %}
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update" campus.id %}'" aria-label="Editar campus" title="Editar campus">
+                    <i class="fi fi-sr-pencil"></i>
+                </button>
+            {% endif %}
+        </div>
 
-        {% if user.is_superuser %}
-            <div class="campus-links">
-                <a class="btn btn-link" href="{% url "mecip:update" campus.id %}">Editar</a>
-            </div>
-        {% endif %}
+        <h1 class="single-contact-name">
+            Campus: {{ campus.campus_name }}
+        </h1>
+
+        <div class="responsive-table">
+            <table class="contacts-table">
+                <tbody>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Nome Campus</strong></td>
+                        <td class="table-cel">{{ campus.campus_name }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Cidade</strong></td>
+                        <td class="table-cel">{{ campus.city }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Rua</strong></td>
+                        <td class="table-cel">{{ campus.street }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Numero</strong></td>
+                        <td class="table-cel">{{ campus.number }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Bairro</strong></td>
+                        <td class="table-cel">{{ campus.neighborhood }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Numero de Contato</strong></td>
+                        <td class="table-cel">{{ campus.contact_number }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>E-mail</strong></td>
+                        <td class="table-cel">{{ campus.email_campus }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Data de Criacao</strong></td>
+                        <td class="table-cel">{{ campus.created_date|date:"d/m/Y" }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 {% endblock content %}

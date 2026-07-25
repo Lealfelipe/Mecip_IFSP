@@ -2,12 +2,50 @@
 
 {% block content %}
     <div class="single-contact">
+        <div class="contact-links">
+            <button
+                type="button"
+                class="section-icon-btn"
+                onclick="window.location='{% url 'mecip:report' report_id=report.id %}'"
+                aria-label="Voltar"
+                title="Voltar"
+            >
+                <i class="fi fi-sr-arrow-left"></i>
+            </button>
+
+            {% if can_answer and status_to_respond %}
+                <button class="btn" onclick="window.location='{% url 'mecip:answer_questionnaire' report_id=report.id %}'">Responder Questionario</button>
+            {% endif %}
+
+            {% if all_answered and status_to_respond %}
+                <button class="btn" onclick="window.location='{% url 'mecip:advance_report_status' report_id=report.id %}'">Encaminhar para avaliacao</button>
+            {% endif %}
+
+            {% if can_manage_records and report.status == "Pendente avaliação" %}
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='ajustar' %}'">Encaminhar para ajuste</button>
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='aprovar' %}'">Aprovar</button>
+                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='bloquear' %}'">Bloquear</button>
+                <button class="btn btn-delete" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='reprovar' %}'">Reprovar</button>
+            {% endif %}
+        </div>
+
         <h2>Questionario: {{ report.questionnaire.name }}</h2>
-        <p><strong>Relatorio:</strong> {{ report.course.type_course }} - {{ report.campus.campus_name }}</p>
+        <p>
+            <strong>Relatorio:</strong>
+            {{ report.course.type_course }} -
+            {{ report.campus.campus_name }} -
+            {{ report.year }}
+        </p>
         <p><strong>Status:</strong> {{ report.status }}</p>
 
-        <div class="responsive_table">
-            <table class="contacts-table">
+        <div class="responsive-table">
+            <table class="contacts-table questionnaire-results-table">
+                <colgroup>
+                    <col class="question-column">
+                    <col class="answer-column">
+                    <col class="argument-column">
+                    <col class="attachments-column">
+                </colgroup>
                 <caption class="table-caption">
                     Perguntas e respostas
                 </caption>
@@ -38,7 +76,7 @@
                             <td class="table-cel">
                                 {% if answer.attachments.exists %}
                                     {% for attachment in answer.attachments.all %}
-                                        <a class="table-link" href="{{ attachment.file.url }}" target="_blank" rel="noopener noreferrer">
+                                        <a class="table-link" href="{{ attachment.file_url }}" target="_blank" rel="noopener noreferrer">
                                             {{ attachment.name }}
                                         </a>{% if not forloop.last %}<br>{% endif %}
                                     {% endfor %}
@@ -58,33 +96,5 @@
             </table>
         </div>
 
-        <div class="contact-links">
-            {% if can_answer and status_to_respond %}
-            <div class="contact-links">
-                <button class="btn" onclick="window.location='{% url 'mecip:answer_questionnaire' report_id=report.id %}'">Responder Questionario</button>
-            </div>
-            {% endif %}
-
-            {% if all_answered and status_to_respond %}
-            <div class="contact-links">
-                <button class="btn" onclick="window.location='{% url 'mecip:advance_report_status' report_id=report.id %}'">Encaminhar para avaliacao</button>
-            </div>
-            {% endif %}
-
-            {% if user.is_superuser and report.status == "Pendente avaliação" %}
-            <div class="contact-links">
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='ajustar' %}'">Encaminhar para ajuste</button>
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='aprovar' %}'">Aprovar</button>
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='bloquear' %}'">Bloquear</button>
-                <button class="btn btn-delete" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='reprovar' %}'">Reprovar</button>
-            </div>
-            {% endif %}
-
-            <div class="contact-links">
-                {% comment %} <a class="btn btn-back" href="{% url 'mecip:report' report_id=report.id %}">Voltar</a> {% endcomment %}
-                <button class="btn btn-back" onclick="window.location='{% url 'mecip:report' report_id=report.id %}'">Voltar</button>
-            </div>
-        </div>
-        
     </div>
 {% endblock %}

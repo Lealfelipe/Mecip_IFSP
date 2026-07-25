@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 from io import BytesIO
 from mecip.models import Report, Campus, Team
+from mecip.permissions import can_view_all_records
 
 
 def dashboard(request):
@@ -20,7 +21,7 @@ def dashboard(request):
     if team_id:
         base_reports = base_reports.filter(assigned_team_id=team_id)
 
-    if request.user.is_authenticated and not request.user.is_superuser:
+    if request.user.is_authenticated and not can_view_all_records(request.user):
         user_teams = request.user.teams.all()
         base_reports = base_reports.filter(assigned_team__in=user_teams)
     elif not request.user.is_authenticated:
@@ -57,7 +58,7 @@ def dashboard(request):
 
 
 def index_report(request):
-    if request.user.is_authenticated and request.user.is_superuser:
+    if request.user.is_authenticated and can_view_all_records(request.user):
         report_queryset = Report.objects.all()
     elif request.user.is_authenticated:
         user_teams = request.user.teams.all()
@@ -65,7 +66,7 @@ def index_report(request):
     else:
         report_queryset = Report.objects.none()
 
-    report_queryset = report_queryset.order_by('-id')
+    report_queryset = report_queryset.order_by('-year', '-id')
     paginator = Paginator(report_queryset, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -90,7 +91,7 @@ def report(request, report_id):
 
     context = {
         'report': single_report,
-        'site_title': f'Relatorio - {single_report.course}',
+        'site_title': f'Relatorio - {single_report.course} - {single_report.year}',
         'can_assign': can_assign,
     }
 
@@ -110,7 +111,10 @@ def report_pdf_download(request, report_id):
         return redirect('mecip:report', report_id=report_id)
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="relatorio_{single_report.course}_{single_report.campus.campus_name}.pdf"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="relatorio_{single_report.course}_'
+        f'{single_report.campus.campus_name}_{single_report.year}.pdf"'
+    )
     return response
 
 

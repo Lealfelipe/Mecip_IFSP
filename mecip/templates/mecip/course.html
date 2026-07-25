@@ -2,26 +2,71 @@
 
 {% block content %}
     <div class="single-contact">
+        <div class="contact-links">
+            <button type="button" class="section-icon-btn" onclick="window.location='{% url 'mecip:index_course' %}'" aria-label="Voltar" title="Voltar">
+                <i class="fi fi-sr-arrow-left"></i>
+            </button>
+            {% if can_manage_records %}
+                <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_course" course_id=course.id %}'" aria-label="Editar curso" title="Editar curso">
+                    <i class="fi fi-sr-pencil"></i>
+                </button>
+            {% endif %}
+        </div>
+
         <h1 class="single-contact-name">
-            {{ course.type_course }}
+            Curso: {{ course.type_course }}
         </h1>
-        <p><b>Nome Curso:</b> {{ course.type_course }}</p>
-        <p><b>Descrição do Curso:</b> {{ course.description }}</p>
-        <p><b>Campus:</b> {{ course.campus.campus_name }}</p>
-        <p><b>Cidade:</b> {{ course.campus.city }}</p>
 
-        {% if user.is_superuser %}
+        <div class="responsive-table">
+            <table class="contacts-table">
+                <tbody>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Nome Curso</strong></td>
+                        <td class="table-cel">{{ course.type_course }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Descricao do Curso</strong></td>
+                        <td class="table-cel">{{ course.description }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Campus</strong></td>
+                        <td class="table-cel">
+                            <span class="table-value-action">
+                                {{ course.campus.campus_name }}
+                                <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:campus' campus_id=course.campus.id %}'" aria-label="Visualizar campus" title="Visualizar campus">
+                                    <i class="fi fi-sr-eye"></i>
+                                </button>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Cidade</strong></td>
+                        <td class="table-cel">{{ course.campus.city }}</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="table-cel"><strong>Relatorios</strong></td>
+                        <td class="table-cel">
+                            {% for report in reports %}
+                                <span class="table-value-action">
+                                    {{ report.year }} - {{ report.status }}
+                                    <button type="button" class="table-view-icon" onclick="window.location='{% url 'mecip:report' report.id %}'" aria-label="Visualizar relatorio" title="Visualizar relatorio">
+                                        <i class="fi fi-sr-eye"></i>
+                                    </button>
+                                </span>
+                                {% if not forloop.last %}<br>{% endif %}
+                            {% empty %}
+                                Nenhum relatorio associado
+                            {% endfor %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% if can_manage_records %}
             <div class="contact-links">
-                <a class="btn btn-link" href="{% url "mecip:update_course" course_id=course.id %}">Editar</a>
-                <a class="btn btn-link" href="{% url 'mecip:campus' campus_id=course.campus.id %}">Campus</a>
-
-                {% if report %}
-                    <a class="btn btn-link" href="{% url 'mecip:report' report.id %}">Relatório</a>
-                {% else %}
-                    <a class="btn btn-primary" href="{% url 'mecip:create_report_params' course_id=course.id campus_id=course.campus.id%}">Criar Relatório</a>
-                {% endif %}
+                <button class="btn" onclick="window.location='{% url 'mecip:create_report_params' course_id=course.id campus_id=course.campus.id %}'">Criar Relatorio</button>
             </div>
-            
         {% endif %}
     </div>
 {% endblock %}

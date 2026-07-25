@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('api/v1/', include('mecip.api_urls')),
     path('', include('mecip.urls')),
     path('admin/', admin.site.urls),
 ]
