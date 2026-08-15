@@ -5,7 +5,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import auth
 from django.contrib.auth.decorators import login_required
 from mecip.forms import CustomAuthenticationForm
+from mecip.permissions import access_required, can_manage_users
 
+@access_required(can_manage_users)
 def register(request):
     form = RegisterForm()
 
@@ -13,9 +15,12 @@ def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Usuário registrado')
-            return redirect('mecip:login')
+            created_user = form.save()
+            messages.success(
+                request,
+                f'Usuário {created_user.username} criado com sucesso.',
+            )
+            return redirect('mecip:register')
 
     return render(
         request,

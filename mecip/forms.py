@@ -376,9 +376,16 @@ class AttachmentForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        uploaded_file = self.cleaned_data.get('file')
 
-        if self.cleaned_data.get('file'):
-            instance.reference_attachment = None
+        if uploaded_file and commit:
+            reference_attachment = ReferenceAttachment.objects.create(
+                name=instance.name,
+                file=uploaded_file,
+                description=instance.description,
+            )
+            instance.reference_attachment = reference_attachment
+            instance.file = ''
 
         if commit:
             instance.save()

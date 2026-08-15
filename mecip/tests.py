@@ -1,3 +1,5 @@
+import tempfile
+
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
@@ -129,34 +131,57 @@ class APIPermissionsTests(APITestCase):
             'answer_attachments/upload.pdf',
         )
 
-    def test_formset_aceita_upload_antes_de_navegar(self):
+    def test_upload_do_formset_e_inserido_na_base_de_referencias(self):
         answer = ReportQuestionAnswer.objects.create(
             report=self.report,
             question=self.question,
             answer='Resposta',
         )
         prefix = f'attachments_{answer.id}'
-        formset = AttachmentFormSet(
-            data={
-                f'{prefix}-TOTAL_FORMS': '1',
-                f'{prefix}-INITIAL_FORMS': '0',
-                f'{prefix}-MIN_NUM_FORMS': '0',
-                f'{prefix}-MAX_NUM_FORMS': '1000',
-                f'{prefix}-0-id': '',
-                f'{prefix}-0-name': 'Novo anexo',
-                f'{prefix}-0-description': '',
-            },
-            files={
-                f'{prefix}-0-file': SimpleUploadedFile(
-                    'documento.txt',
-                    b'conteudo',
-                ),
-            },
-            instance=answer,
-            prefix=prefix,
-        )
 
-        self.assertTrue(formset.is_valid(), formset.errors)
+        with tempfile.TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                formset = AttachmentFormSet(
+                    data={
+                        f'{prefix}-TOTAL_FORMS': '1',
+                        f'{prefix}-INITIAL_FORMS': '0',
+                        f'{prefix}-MIN_NUM_FORMS': '0',
+                        f'{prefix}-MAX_NUM_FORMS': '1000',
+                        f'{prefix}-0-id': '',
+                        f'{prefix}-0-name': 'Novo anexo',
+                        f'{prefix}-0-description': 'Documento enviado',
+                    },
+                    files={
+                        f'{prefix}-0-file': SimpleUploadedFile(
+                            'documento.txt',
+                            b'conteudo',
+                        ),
+                    },
+                    instance=answer,
+                    prefix=prefix,
+                )
+
+                self.assertTrue(formset.is_valid(), formset.errors)
+                [attachment] = formset.save()
+                attachment.refresh_from_db()
+
+                reference = ReferenceAttachment.objects.get(
+                    name='Novo anexo',
+                )
+                self.assertEqual(
+                    attachment.reference_attachment,
+                    reference,
+                )
+                self.assertFalse(attachment.file)
+                self.assertEqual(
+                    reference.description,
+                    'Documento enviado',
+                )
+                self.assertTrue(
+                    reference.file.name.startswith(
+                        'reference_attachments/',
+                    )
+                )
 
     def test_permite_relatorios_do_mesmo_curso_em_anos_diferentes(self):
         report = Report.objects.create(

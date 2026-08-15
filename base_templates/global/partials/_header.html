@@ -51,6 +51,11 @@
                         <a href="{% url 'mecip:create_reference_attachment' %}" class="menu-link">Criar Anexo de Referencia</a>
                     </li>
                 {% endif %}
+                {% if can_manage_users %}
+                    <li class="menu-item">
+                        <a href="{% url 'mecip:register' %}" class="menu-link">Criar Usuário</a>
+                    </li>
+                {% endif %}
                 <li class="menu-item">
                     <a href="{% url 'mecip:logout' %}" class="menu-link">Logout</a>
                 </li>
