@@ -30,6 +30,18 @@
         .title{
             background-color: #9a9a9a;
         }
+        .question {
+            border-bottom: 1px solid #d9d9d9;
+            padding: 8px 0;
+            page-break-inside: avoid;
+        }
+        .question:last-child {
+            border-bottom: 0;
+        }
+        .attachment-link {
+            color: #1155cc;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -58,31 +70,64 @@
         <p><strong>Categoria:</strong> {{ report.course.type_course.type_categorie }}</p>
     </div>
 
-    <h2>Questionario associado ao relatorio</h2>
     <div>
         {% if report.questionnaire %}
-            <p><strong>Nome:</strong> {{ report.questionnaire.name }}</p>
-            <p><strong>Descricao:</strong> {{ report.questionnaire.description|default:"Sem descricao" }}</p>
-            {% if report.questionnaire.sections.exists %}
-                <ol>
-                    {% for section in report.questionnaire.sections.all %}
-                        <li>
-                            {{ section.name }}
-                            <ol>
-                                {% for question in section.questions.all %}
-                                    <li>{{ question.text }}</li>
-                                {% empty %}
-                                    <li>Nao ha perguntas cadastradas nesta secao.</li>
-                                {% endfor %}
-                            </ol>
-                        </li>
-                    {% endfor %}
-                </ol>
+            {% if answers %}
+                {% regroup answers by question.section as answer_sections %}
+
+                {% for answer_section in answer_sections %}
+                    <div class="block">
+                        <h2 class="title">
+                            Seção: {{ answer_section.grouper.name }}
+                        </h2>
+
+                        {% for answer in answer_section.list %}
+                            <div class="question">
+                                <p>
+                                    <strong>Pergunta:</strong>
+                                    {{ answer.question.text }}
+                                </p>
+
+                                <p>
+                                    <strong>Nota:</strong>
+                                    {{ answer.answer|default:"---" }}
+                                    |
+                                    <strong>Critério de aceite:</strong>
+                                    {% if answer.selected_answer_option.acceptance_criteria %}
+                                        {{ answer.selected_answer_option.acceptance_criteria }}
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </p>
+
+                                <p>
+                                    <strong>Anexos:</strong>
+                                    {% if answer.attachments.exists %}
+                                        {% for attachment in answer.attachments.all %}
+                                            <a
+                                                class="attachment-link"
+                                                href="{{ attachment.pdf_url }}"
+                                            >
+                                                {{ attachment.name }}
+                                            </a>{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
             {% else %}
-                <p class="muted">Nao ha perguntas cadastradas neste questionario.</p>
+                <p class="muted">
+                    Não há respostas registradas neste questionário.
+                </p>
             {% endif %}
         {% else %}
-            <p class="muted">Este relatorio nao possui questionario associado.</p>
+            <p class="muted">
+                Este relatório não possui questionário associado.
+            </p>
         {% endif %}
     </div>
 </body>

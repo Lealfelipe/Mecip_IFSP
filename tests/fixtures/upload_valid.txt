@@ -1,0 +1,1 @@
+Arquivo mínimo válido para testes de upload.

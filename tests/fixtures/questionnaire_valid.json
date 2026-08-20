@@ -1,0 +1,19 @@
+{
+  "questionario": "Instrumento de teste",
+  "dimensao": "Dimensao 1",
+  "indicador": "Indicador 1.1",
+  "questao": "Questao de multipla escolha",
+  "tipo": "Multipla escolha",
+  "obrigatoria": "Sim",
+  "condicao_especial": null,
+  "conceitos": [
+    {
+      "conceito": "1",
+      "criterio_de_aceite": "Criterio minimo"
+    },
+    {
+      "conceito": "2",
+      "criterio_de_aceite": "Criterio satisfatorio"
+    }
+  ]
+}

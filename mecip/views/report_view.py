@@ -104,7 +104,7 @@ def report(request, report_id):
 
 def report_pdf_download(request, report_id):
     single_report = get_object_or_404(Report, pk=report_id)
-    pdf_bytes = _build_report_pdf(single_report)
+    pdf_bytes = _build_report_pdf(single_report, request)
 
     if pdf_bytes is None:
         messages.error(request, 'Nao foi possivel gerar o PDF do relatorio.')
@@ -118,13 +118,37 @@ def report_pdf_download(request, report_id):
     return response
 
 
-def _build_report_pdf(report: Report):
+def _build_report_pdf(report: Report, request):
     try:
         from xhtml2pdf import pisa
     except ImportError:
         return None
 
-    html = render_to_string('mecip/report_pdf.html', {'report': report})
+    answers = (
+        report.answers
+        .filter(question__section__questionnaire=report.questionnaire)
+        .select_related('question__section', 'selected_answer_option')
+        .prefetch_related('attachments__reference_attachment')
+        .order_by(
+            'question__section__order',
+            'question__section__name',
+            'question__order',
+        )
+    )
+
+    for answer in answers:
+        for attachment in answer.attachments.all():
+            attachment.pdf_url = request.build_absolute_uri(
+                attachment.file_url
+            )
+
+    html = render_to_string(
+        'mecip/report_pdf.html',
+        {
+            'report': report,
+            'answers': answers,
+        },
+    )
     output = BytesIO()
     pdf = pisa.CreatePDF(src=html, dest=output, encoding='utf-8')
     if pdf.err:

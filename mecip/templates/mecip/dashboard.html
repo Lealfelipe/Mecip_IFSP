@@ -1,11 +1,6 @@
 {% extends "global/base.html" %}
-{% load static %}
 
 {% block content %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="{% static 'mecip/js/dashboard.js' %}"></script>
-
-
     <section class="dashboard-header">
         <h1 class="dashboard-title">Painel de Relatórios</h1>
     </section>
@@ -41,21 +36,7 @@
         </form>
     </section>
 
-    {{ status_labels|json_script:"status-labels" }}
-    {{ status_data|json_script:"status-data" }}
-
     <section class="dashboard-kpis">
-        <div class="chart-container">
-            <div class="card">
-                <h2>Distribuição por Status</h2>
-                <canvas 
-                    id="statusChart" 
-                    width="300" 
-                    height="300">
-                </canvas>
-            </div>
-        </div>
-
         <div class="cards-container">
             <a href="?{% if selected_campus %}&campus={{ selected_campus }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="card-link">
                 <div class="card {% if not selected_status %}card-selected{% endif %}">
