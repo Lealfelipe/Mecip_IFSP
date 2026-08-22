@@ -91,3 +91,26 @@ def test_coordenador_importa_questionario_com_secao_e_alternativas(
         answer_value=first_concept["conceito"],
         acceptance_criteria=first_concept["criterio_de_aceite"],
     ).exists()
+
+
+def test_importacao_rejeita_choice_sem_alternativas(
+    authenticate_api_client,
+    coordinator,
+    valid_questionnaire_payload,
+):
+    client = authenticate_api_client(coordinator)
+    payload = {
+        **valid_questionnaire_payload,
+        "questionario": "Questionário sem alternativas",
+        "questao": "Choice inválida",
+        "conceitos": [],
+    }
+
+    response = client.post(
+        "/api/v1/questionarios/importar/",
+        payload,
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert not Question.objects.filter(text="Choice inválida").exists()

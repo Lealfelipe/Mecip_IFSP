@@ -1,12 +1,14 @@
 import pytest
 from django.contrib.messages import get_messages
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from mecip.models import (
     Campus,
     Course,
     Question,
+    QuestionAnswerOption,
     Questionnaire,
     QuestionnaireSection,
     ReferenceAttachment,
@@ -58,7 +60,6 @@ def question_payload(section, **overrides):
         "field_type": "text",
         "required": "on",
         "order": "1",
-        "choices": "",
         "answer_options-TOTAL_FORMS": "1",
         "answer_options-INITIAL_FORMS": "0",
         "answer_options-MIN_NUM_FORMS": "0",
@@ -356,42 +357,84 @@ def test_coordenador_cria_e_edita_questionario_secao_e_pergunta(
     assert question.text == "Pergunta atualizada pela view"
 
 
-def test_get_exclui_pergunta_e_documenta_risco_de_csrf(
-    client,
-    coordinator,
-    questionnaire,
-    text_question,
-):
-    client.force_login(coordinator)
-
-    response = client.get(
-        reverse(
-            "mecip:delete_question",
-            args=(questionnaire.id, text_question.id),
-        )
-    )
-
-    assert response.status_code == 302
-    assert not Question.objects.filter(pk=text_question.pk).exists()
-
-
-def test_get_exclui_secao_e_documenta_risco_de_csrf(
+def test_view_nao_cria_choice_sem_alternativa(
     client,
     coordinator,
     questionnaire,
     section,
 ):
     client.force_login(coordinator)
-
-    response = client.get(
-        reverse(
-            "mecip:delete_questionnaire_section",
-            args=(questionnaire.id, section.id),
-        )
+    payload = question_payload(
+        section,
+        text="Choice sem alternativa",
+        field_type="choice",
     )
 
-    assert response.status_code == 302
-    assert not QuestionnaireSection.objects.filter(pk=section.pk).exists()
+    response = client.post(
+        reverse(
+            "mecip:create_question",
+            args=(questionnaire.id,),
+        ),
+        payload,
+    )
+
+    assert response.status_code == 200
+    assert not Question.objects.filter(
+        section=section,
+        text="Choice sem alternativa",
+    ).exists()
+
+
+def test_view_nao_exclui_todas_as_alternativas_na_edicao(
+    client,
+    coordinator,
+    questionnaire,
+    multiple_choice_question,
+    answer_options,
+):
+    client.force_login(coordinator)
+    original_text = multiple_choice_question.text
+    first_option, second_option = answer_options
+    section = multiple_choice_question.section
+    payload = question_payload(
+        section,
+        text="Alteração que não deve persistir",
+        field_type="choice",
+        **{
+            "answer_options-TOTAL_FORMS": "2",
+            "answer_options-INITIAL_FORMS": "2",
+            "answer_options-0-id": first_option.id,
+            "answer_options-0-answer_value": (
+                first_option.answer_value
+            ),
+            "answer_options-0-acceptance_criteria": "",
+            "answer_options-0-DELETE": "on",
+            "answer_options-1-id": second_option.id,
+            "answer_options-1-answer_value": (
+                second_option.answer_value
+            ),
+            "answer_options-1-acceptance_criteria": "",
+            "answer_options-1-DELETE": "on",
+        },
+    )
+
+    response = client.post(
+        reverse(
+            "mecip:update_question",
+            args=(
+                questionnaire.id,
+                multiple_choice_question.id,
+            ),
+        ),
+        payload,
+    )
+    multiple_choice_question.refresh_from_db()
+
+    assert response.status_code == 200
+    assert multiple_choice_question.text == original_text
+    assert QuestionAnswerOption.objects.filter(
+        question=multiple_choice_question
+    ).count() == 2
 
 
 def test_coordenador_cria_edita_e_exclui_anexo_de_referencia(
@@ -452,6 +495,56 @@ def test_coordenador_cria_edita_e_exclui_anexo_de_referencia(
 
     assert response.status_code == 302
     assert not ReferenceAttachment.objects.filter(pk=attachment.pk).exists()
+
+
+def test_endpoints_de_anexo_catalogado_rejeitam_novo_arquivo_invalido(
+    client,
+    coordinator,
+    reference_attachment,
+):
+    client.force_login(coordinator)
+    original_file = reference_attachment.file.name
+
+    response = client.post(
+        reverse("mecip:create_reference_attachment"),
+        {
+            "name": "Extensão inválida",
+            "file": SimpleUploadedFile(
+                "documento.PDF",
+                b"conteudo",
+                content_type="application/pdf",
+            ),
+            "description": "",
+            "active": "on",
+        },
+    )
+
+    assert response.status_code == 200
+    assert not ReferenceAttachment.objects.filter(
+        name="Extensão inválida"
+    ).exists()
+
+    response = client.post(
+        reverse(
+            "mecip:update_reference_attachment",
+            args=(reference_attachment.id,),
+        ),
+        {
+            "name": "Não deve ser salvo",
+            "file": SimpleUploadedFile(
+                "documento.pdf",
+                b"x" * (10_000_000 + 1),
+                content_type="application/pdf",
+            ),
+            "description": "Tentativa inválida",
+            "active": "on",
+        },
+    )
+    reference_attachment.refresh_from_db()
+
+    assert response.status_code == 200
+    assert reference_attachment.file.name == original_file
+    assert reference_attachment.name != "Não deve ser salvo"
 
 
 def test_anexo_catalogado_em_uso_nao_pode_ser_excluido(

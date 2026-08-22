@@ -69,7 +69,7 @@ def build_url(route_name, kwargs_spec, objects):
 
 WEB_ROUTE_CASES = (
     pytest.param("connected_index", {}, id="dashboard-raiz"),
-    pytest.param("index", {}, id="index-raiz-duplicado"),
+    pytest.param("index", {}, id="campus-listar"),
     pytest.param("login", {}, id="login"),
     pytest.param("campus", {"campus_id": "campus"}, id="campus"),
     pytest.param("create", {}, id="campus-criar"),
@@ -289,6 +289,10 @@ AUTHENTICATED_TEMPLATE_CASES = (
     pytest.param(
         "dashboard", {}, "mecip/dashboard.html", "reports",
         id="dashboard",
+    ),
+    pytest.param(
+        "index", {}, "mecip/index.html", "page_obj",
+        id="campus-listar",
     ),
     pytest.param(
         "campus", {"campus_id": "campus"}, "mecip/campus.html",
@@ -590,21 +594,23 @@ def test_equipe_nao_acessa_detalhe_de_outra_equipe(
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A segunda rota vazia, destinada ao index de Campus, fica "
-        "sombreada pela rota anterior do dashboard."
-    ),
-)
-def test_rota_index_renderiza_listagem_de_campus(
+def test_raiz_renderiza_dashboard_e_campus_tem_rota_propria(
     client,
     coordinator,
 ):
     CampusFactory.create_batch(11)
     client.force_login(coordinator)
 
-    response = client.get(reverse("mecip:index"), {"page": 2})
+    assert reverse("mecip:connected_index") == "/"
+    assert reverse("mecip:index") == "/campus/"
+
+    dashboard_response = client.get("/")
+    assert dashboard_response.status_code == 200
+    assert "mecip/dashboard.html" in [
+        template.name for template in dashboard_response.templates
+    ]
+
+    response = client.get("/campus/", {"page": 2})
 
     assert response.status_code == 200
     assert "mecip/index.html" in [

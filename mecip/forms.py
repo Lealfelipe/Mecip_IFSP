@@ -1,7 +1,9 @@
 from typing import Any
 from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, QuestionnaireSection, Question, ReportQuestionAnswer, Attachments, QuestionAnswerOption, ReferenceAttachment
+from mecip.validators import validate_pdf_upload
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from mecip.permissions import ROLE_EQUIPE, assign_role
@@ -43,7 +45,6 @@ class CampusForm(forms.ModelForm):
             )
 
         return super().clean()
-    
     def clean_campus_name(self): ###funcao para validação de dados
         campus_name = self.cleaned_data.get('campus_name')
 
@@ -83,7 +84,6 @@ class CourseForm(forms.ModelForm):
             )
 
         return super().clean()
-    
     def clean_campus_name(self): ###funcao para validação de dados
         type_course = self.cleaned_data.get('type_course')
 
@@ -271,7 +271,21 @@ class QuestionnaireForm(forms.ModelForm):
         }
 
 
-class ReferenceAttachmentForm(forms.ModelForm):
+class PdfUploadValidationMixin:
+    def clean_file(self):
+        file = self.cleaned_data.get("file")
+        uploaded_file = self.files.get(self.add_prefix("file"))
+
+        if uploaded_file:
+            validate_pdf_upload(uploaded_file)
+
+        return file
+
+
+class ReferenceAttachmentForm(
+    PdfUploadValidationMixin,
+    forms.ModelForm,
+):
     class Meta:
         model = ReferenceAttachment
         fields = ('name', 'file', 'description', 'active')
@@ -282,7 +296,7 @@ class ReferenceAttachmentForm(forms.ModelForm):
             'active': 'Ativo',
         }
         widgets = {
-            'file': forms.FileInput,
+            'file': forms.FileInput(attrs={'accept': '.pdf'}),
             'description': forms.Textarea(attrs={'rows': 3}),
         }
 
@@ -310,7 +324,7 @@ class QuestionnaireSectionForm(forms.ModelForm):
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
-        fields = ('section', 'indicator', 'special_condition', 'text', 'field_type', 'required', 'order', 'choices')
+        fields = ('section', 'indicator', 'special_condition', 'text', 'field_type', 'required', 'order')
         labels = {
             'section': 'Seção',
             'indicator': 'Indicador',
@@ -319,7 +333,6 @@ class QuestionForm(forms.ModelForm):
             'field_type': 'Tipo',
             'required': 'Obrigatória',
             'order': 'Ordem',
-            'choices': 'Opções (se múltipla escolha)',
         }
 
 
@@ -336,16 +349,38 @@ class QuestionAnswerOptionForm(forms.ModelForm):
         }
 
 
+class BaseQuestionAnswerOptionFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+
+        if any(self.errors) or self.instance.field_type != 'choice':
+            return
+
+        active_forms = [
+            form
+            for form in self.forms
+            if form.cleaned_data and not form.cleaned_data.get('DELETE')
+        ]
+        if not active_forms:
+            raise ValidationError(
+                'Perguntas de múltipla escolha exigem ao menos uma alternativa.'
+            )
+
+
 QuestionAnswerOptionFormSet = forms.inlineformset_factory(
     Question,
     QuestionAnswerOption,
     form=QuestionAnswerOptionForm,
+    formset=BaseQuestionAnswerOptionFormSet,
     extra=1,
     can_delete=True,
 )
 
 
-class AttachmentForm(forms.ModelForm):
+class AttachmentForm(
+    PdfUploadValidationMixin,
+    forms.ModelForm,
+):
     class Meta:
         model = Attachments
         fields = ('name', 'file', 'description')
@@ -355,6 +390,7 @@ class AttachmentForm(forms.ModelForm):
             'description': 'Descrição',
         }
         widgets = {
+            'file': forms.FileInput(attrs={'accept': '.pdf'}),
             'description': forms.Textarea(attrs={'rows': 2}),
         }
 
@@ -376,7 +412,7 @@ class AttachmentForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        uploaded_file = self.cleaned_data.get('file')
+        uploaded_file = self.files.get(self.add_prefix('file'))
 
         if uploaded_file and commit:
             reference_attachment = ReferenceAttachment.objects.create(
@@ -441,17 +477,14 @@ class TypeCourseForm(forms.ModelForm):
             )
 
         return super().clean()
-    
-    def clean_campus_name(self): ###funcao para validação de dados
+    def clean_type_name_course(self):
         type_name_course = self.cleaned_data.get('type_name_course')
 
-        if type_name_course == 'ABC':
-            self.add_error(
-                'type_name_course',
-                ValidationError(
-                    'Nome inválido',
-                    code= 'invalid'
-                )
+        normalized_name = ''.join(type_name_course.split()).casefold()
+        if normalized_name == 'abc':
+            raise ValidationError(
+                'Nome inválido',
+                code='invalid',
             )
 
         return type_name_course
@@ -487,23 +520,3 @@ class TeamForm(forms.ModelForm):
                 msg
             )
         return super().clean()
-
-    def clean_team_name(self):
-        team_name = self.cleaned_data.get('team_name')
-        campus = self.cleaned_data.get('campus')
-
-        if not team_name:
-            return team_name
-
-        query_team_name = Team.objects.filter(team_name=team_name)
-        if campus:
-            query_team_name = query_team_name.filter(campus=campus)
-
-        current_pk = getattr(self.instance, 'pk', None)
-        if query_team_name.exclude(pk=current_pk).exists():
-            self.add_error(
-                'team_name',
-                ValidationError('Já existe uma equipe com este nome neste campus', code='invalid')
-            )
-
-        return team_name

@@ -6,7 +6,14 @@ from django.urls import reverse
 from mecip.models import Report, Course, Campus, Question, ReportQuestionAnswer, Type_Course, QuestionAnswerOption, ReferenceAttachment, Attachments
 from django.contrib import messages
 from django.http import JsonResponse
-from mecip.permissions import access_required, can_answer_report, can_manage_records, can_view_report_questionnaire
+from django.views.decorators.http import require_POST
+from mecip.permissions import (
+    access_denied_response,
+    access_required,
+    can_answer_report,
+    can_manage_records,
+    can_view_report_questionnaire,
+)
 
 @access_required(can_manage_records)
 def create_report(request):
@@ -121,8 +128,7 @@ def answer_questionnaire(request, report_id):
         return redirect('mecip:report', report_id=report_id)
 
     if not can_answer_report(request.user, report):
-        messages.error(request, 'Somente usuario da equipe atribuida ou coordenador pode responder o questionario.')
-        return redirect('mecip:report', report_id=report_id)
+        return access_denied_response(request)
 
     if report.questionnaire is None:
         messages.error(request, 'Este relatorio nao tem questionario associado.')
@@ -265,8 +271,7 @@ def view_questionnaire(request, report_id):
         return redirect('mecip:report', report_id=report_id)
 
     if not can_view_report_questionnaire(request.user, report):
-        messages.error(request, 'Somente membro da equipe atribuida ou coordenador pode ver o questionario.')
-        return redirect('mecip:report', report_id=report_id)
+        return access_denied_response(request)
 
     if report.questionnaire is None:
         messages.error(request, 'Este relatorio nao tem questionario associado.')
@@ -302,6 +307,7 @@ def view_questionnaire(request, report_id):
     return render(request, 'mecip/view_questionnaire.html', context)
 
 
+@require_POST
 def advance_report_status(request, report_id):
     report = get_object_or_404(Report, pk=report_id)
 
@@ -328,6 +334,7 @@ def advance_report_status(request, report_id):
     return redirect('mecip:view_questionnaire', report_id=report_id)
 
 
+@require_POST
 def change_report_status(request, report_id, action):
     report = get_object_or_404(Report, pk=report_id)
 

@@ -19,7 +19,15 @@
             {% endif %}
 
             {% if can_assign %}
-                <button class="btn btn-assign" onclick="window.location='{% url 'mecip:assign_report' report_id=report.id %}'">Atribuir a mim</button>
+                <form
+                    method="post"
+                    action="{% url 'mecip:assign_report' report_id=report.id %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-assign">
+                        Atribuir a mim
+                    </button>
+                </form>
             {% endif %}
 
             {% if report.questionnaire and user.is_authenticated%}

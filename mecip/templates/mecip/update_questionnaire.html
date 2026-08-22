@@ -86,7 +86,16 @@
                                                 <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_questionnaire_section" questionnaire.id section.id %}'" aria-label="Editar seção" title="Editar seção">
                                                     <i class="fi fi-sr-pencil"></i>
                                                 </button>
-                                                <button type="button" class="section-icon-btn section-icon-danger" onclick="return confirm('Tem certeza?') && (window.location='{% url "mecip:delete_questionnaire_section" questionnaire.id section.id %}')" aria-label="Deletar seção" title="Deletar seção">
+                                                <button
+                                                    type="button"
+                                                    class="section-icon-btn section-icon-danger"
+                                                    data-open-questionnaire-delete-modal
+                                                    data-delete-kind="section"
+                                                    data-delete-name="{{ section.name }}"
+                                                    data-delete-url="{% url 'mecip:delete_questionnaire_section' questionnaire.id section.id %}"
+                                                    aria-label="Deletar seção"
+                                                    title="Deletar seção"
+                                                >
                                                     <i class="fi fi-sr-trash"></i>
                                                 </button>
                                             </span>
@@ -113,7 +122,16 @@
                                                 <button type="button" class="section-icon-btn" onclick="window.location='{% url "mecip:update_question" questionnaire.id question.id %}'" aria-label="Editar questão" title="Editar questão">
                                                     <i class="fi fi-sr-pencil"></i>
                                                 </button>
-                                                <button type="button" class="section-icon-btn section-icon-danger" onclick="return confirm('Tem certeza?') && (window.location='{% url "mecip:delete_question" questionnaire.id question.id %}')" aria-label="Deletar questão" title="Deletar questão">
+                                                <button
+                                                    type="button"
+                                                    class="section-icon-btn section-icon-danger"
+                                                    data-open-questionnaire-delete-modal
+                                                    data-delete-kind="question"
+                                                    data-delete-name="{{ question.text }}"
+                                                    data-delete-url="{% url 'mecip:delete_question' questionnaire.id question.id %}"
+                                                    aria-label="Deletar questão"
+                                                    title="Deletar questão"
+                                                >
                                                     <i class="fi fi-sr-trash"></i>
                                                 </button>
                                             </span>
@@ -140,6 +158,53 @@
         </div>
     {% endif %}
 
+    {% if questionnaire.pk and can_manage_records %}
+        <div
+            class="attachment-modal-backdrop"
+            id="questionnaire-delete-modal"
+            hidden
+        >
+            <div
+                class="attachment-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="questionnaire-delete-title"
+                aria-describedby="questionnaire-delete-description"
+            >
+                <div class="attachment-modal-header">
+                    <h3 id="questionnaire-delete-title">
+                        Confirmar exclusão
+                    </h3>
+                </div>
+                <div class="attachment-modal-body">
+                    <p id="questionnaire-delete-description">
+                        Tem certeza de que deseja excluir
+                        <strong id="questionnaire-delete-name"></strong>?
+                    </p>
+                </div>
+                <div class="attachment-modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-back"
+                        id="cancel-questionnaire-delete"
+                    >
+                        Cancelar
+                    </button>
+                    <form
+                        id="questionnaire-delete-form"
+                        method="post"
+                        action=""
+                    >
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-delete">
+                            Excluir
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     <script>
         document.querySelectorAll('[data-section-toggle]').forEach((toggleButton) => {
             toggleButton.addEventListener('click', () => {
@@ -152,6 +217,62 @@
                     row.hidden = isExpanded;
                 });
             });
+        });
+
+        const questionnaireDeleteModal = document.getElementById(
+            'questionnaire-delete-modal'
+        );
+        const questionnaireDeleteForm = document.getElementById(
+            'questionnaire-delete-form'
+        );
+        const questionnaireDeleteName = document.getElementById(
+            'questionnaire-delete-name'
+        );
+        const cancelQuestionnaireDelete = document.getElementById(
+            'cancel-questionnaire-delete'
+        );
+        let questionnaireDeleteTrigger = null;
+
+        const closeQuestionnaireDeleteModal = () => {
+            questionnaireDeleteModal.hidden = true;
+            questionnaireDeleteForm.removeAttribute('action');
+
+            if (questionnaireDeleteTrigger) {
+                questionnaireDeleteTrigger.focus();
+            }
+        };
+
+        document.querySelectorAll(
+            '[data-open-questionnaire-delete-modal]'
+        ).forEach((button) => {
+            button.addEventListener('click', () => {
+                questionnaireDeleteTrigger = button;
+                questionnaireDeleteForm.action = button.dataset.deleteUrl;
+                questionnaireDeleteName.textContent =
+                    button.dataset.deleteName;
+                questionnaireDeleteModal.hidden = false;
+                cancelQuestionnaireDelete.focus();
+            });
+        });
+
+        cancelQuestionnaireDelete.addEventListener(
+            'click',
+            closeQuestionnaireDeleteModal
+        );
+
+        questionnaireDeleteModal.addEventListener('click', (event) => {
+            if (event.target === questionnaireDeleteModal) {
+                closeQuestionnaireDeleteModal();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (
+                event.key === 'Escape'
+                && !questionnaireDeleteModal.hidden
+            ) {
+                closeQuestionnaireDeleteModal();
+            }
         });
     </script>
 

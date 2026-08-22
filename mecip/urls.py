@@ -5,7 +5,7 @@ app_name = 'mecip'
 
 urlpatterns = [
     path('', views.dashboard, name='connected_index'),
-    path('', views.login_view, name='index'),
+    path('campus/', views.index, name='index'),
     path('login/', views.login_view, name='login'),
 
 

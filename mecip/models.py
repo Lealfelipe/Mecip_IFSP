@@ -1,6 +1,8 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
+from mecip.validators import normalize_team_name
 
 
 class Campus(models.Model):
@@ -231,11 +233,47 @@ class Report(models.Model):
     
 class Team(models.Model):
     team_name = models.CharField(max_length=250)
+    normalized_name = models.CharField(max_length=250, editable=False)
     created_date = models.DateTimeField(default=timezone.now)
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE)
     users = models.ManyToManyField('auth.User', related_name='teams')
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('campus', 'normalized_name'),
+                name='unique_normalized_team_name_per_campus',
+            ),
+        ]
 
+    def clean(self):
+        super().clean()
+        self.normalized_name = normalize_team_name(self.team_name)
+
+        if (
+            self.campus_id
+            and Team.objects.filter(
+                campus_id=self.campus_id,
+                normalized_name=self.normalized_name,
+            ).exclude(pk=self.pk).exists()
+        ):
+            raise ValidationError({
+                'team_name': (
+                    'Já existe uma equipe com este nome neste campus'
+                ),
+            })
+
+    def save(self, *args, **kwargs):
+        self.normalized_name = normalize_team_name(self.team_name)
+
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            kwargs['update_fields'] = {
+                *update_fields,
+                'normalized_name',
+            }
+
+        return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f'{self.team_name}'

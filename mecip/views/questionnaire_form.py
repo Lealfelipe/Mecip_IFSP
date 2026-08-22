@@ -3,6 +3,8 @@ from mecip.forms import QuestionnaireForm, QuestionnaireSectionForm, QuestionFor
 from django.urls import reverse
 from mecip.models import Questionnaire, QuestionnaireSection, Question
 from django.contrib import messages
+from django.db import transaction
+from django.views.decorators.http import require_POST
 from mecip.permissions import access_required, can_manage_records
 
 
@@ -170,6 +172,7 @@ def update_questionnaire_section(request, questionnaire_id, section_id):
     return render(request, 'mecip/create.html', context)
 
 
+@require_POST
 @access_required(is_admin)
 def delete_questionnaire_section(request, questionnaire_id, section_id):
     """Deleta uma secao"""
@@ -204,11 +207,15 @@ def create_question(request, questionnaire_id):
             'questionnaire': questionnaire,
         }
 
-        if form.is_valid() and answer_option_formset.is_valid():
-            question = form.save(commit=False)
-            question.save()
-            answer_option_formset.instance = question
-            answer_option_formset.save()
+        form_is_valid = form.is_valid()
+        answer_options_are_valid = answer_option_formset.is_valid()
+
+        if form_is_valid and answer_options_are_valid:
+            with transaction.atomic():
+                question = form.save(commit=False)
+                question.save()
+                answer_option_formset.instance = question
+                answer_option_formset.save()
             messages.success(request, 'Questao cadastrada com sucesso')
             return redirect('mecip:update_question', questionnaire_id=questionnaire_id, question_id=question.pk)
         
@@ -252,9 +259,13 @@ def update_question(request, questionnaire_id, question_id):
             instance=question,
             prefix='answer_options',
         )
-        if form.is_valid() and answer_option_formset.is_valid():
-            form.save()
-            answer_option_formset.save()
+        form_is_valid = form.is_valid()
+        answer_options_are_valid = answer_option_formset.is_valid()
+
+        if form_is_valid and answer_options_are_valid:
+            with transaction.atomic():
+                form.save()
+                answer_option_formset.save()
             messages.success(request, 'Questao alterada com sucesso')
             return redirect('mecip:update_question', questionnaire_id=questionnaire_id, question_id=question.id)
 
@@ -289,6 +300,7 @@ def update_question(request, questionnaire_id, question_id):
     return render(request, 'mecip/create_question.html', context)
 
 
+@require_POST
 @access_required(is_admin)
 def delete_question(request, questionnaire_id, question_id):
     """Deleta uma questao"""

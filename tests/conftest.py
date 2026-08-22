@@ -205,9 +205,9 @@ def invalid_upload_path():
 @pytest.fixture
 def valid_upload(valid_upload_path):
     return SimpleUploadedFile(
-        valid_upload_path.name,
+        "upload_valid.pdf",
         valid_upload_path.read_bytes(),
-        content_type="text/plain",
+        content_type="application/pdf",
     )
 
 

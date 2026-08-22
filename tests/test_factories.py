@@ -157,8 +157,8 @@ def test_file_fixtures_represent_valid_and_invalid_inputs(
     valid_questionnaire_payload,
     invalid_questionnaire_content,
 ):
-    assert valid_upload.name.endswith(".txt")
-    assert valid_upload.content_type == "text/plain"
+    assert valid_upload.name.endswith(".pdf")
+    assert valid_upload.content_type == "application/pdf"
     assert valid_upload.read()
     assert invalid_upload.name.endswith(".exe")
     assert invalid_upload.content_type == "application/octet-stream"

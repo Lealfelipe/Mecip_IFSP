@@ -48,6 +48,15 @@ def can_view_report_questionnaire(user, report):
     return can_manage_records(user) or user_belongs_to_report_team(user, report)
 
 
+def can_view_questionnaire(user, questionnaire):
+    return can_manage_records(user) or (
+        user.is_authenticated
+        and questionnaire.reports.filter(
+            assigned_team__users=user,
+        ).exists()
+    )
+
+
 def can_answer_report(user, report):
     return can_manage_records(user) or user_belongs_to_report_team(user, report)
 
@@ -58,18 +67,22 @@ def assign_role(user, role_name):
     user.groups.add(Group.objects.get(name=role_name))
 
 
+def access_denied_response(request):
+    return render(
+        request,
+        'mecip/access_denied.html',
+        {'site_title': 'Acesso restrito'},
+        status=403,
+    )
+
+
 def access_required(test_func):
     def decorator(view_func):
         def wrapped(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('mecip:login')
             if not test_func(request.user):
-                return render(
-                    request,
-                    'mecip/access_denied.html',
-                    {'site_title': 'Acesso restrito'},
-                    status=403,
-                )
+                return access_denied_response(request)
             return view_func(request, *args, **kwargs)
 
         return wrapped

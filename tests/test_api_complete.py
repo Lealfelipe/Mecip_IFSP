@@ -328,14 +328,8 @@ def test_patch_atualiza_apenas_campos_informados(
     assert response.data[field] == case["patch_payload"][field]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Os ModelViewSets omitem DELETE em http_method_names."
-    ),
-)
 @pytest.mark.parametrize("resource_name", RESOURCE_NAMES)
-def test_superadmin_exclui_recurso(
+def test_delete_nao_e_permitido_nem_para_superadmin(
     authenticate_api_client,
     superadmin,
     resource_name,
@@ -347,8 +341,8 @@ def test_superadmin_exclui_recurso(
         f"/api/v1/{resource_name}/{case['instance'].id}/"
     )
 
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    assert not case["model"].objects.filter(
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+    assert case["model"].objects.filter(
         pk=case["instance"].pk
     ).exists()
 
@@ -460,7 +454,7 @@ def test_busca_filtra_listagem_pelos_campos_configurados(
     assert nonmatching.id not in result_ids
 
 
-def test_equipe_visualiza_apenas_relatorios_atribuidos(
+def test_equipe_visualiza_relatorios_somente_por_assigned_team(
     authenticate_api_client,
     team_user,
 ):
@@ -472,7 +466,7 @@ def test_equipe_visualiza_apenas_relatorios_atribuidos(
         assigned_team=team,
         assigned_user=None,
     )
-    visible_by_user = ReportFactory(
+    assigned_user_only = ReportFactory(
         assigned_team=None,
         assigned_user=team_user,
     )
@@ -484,15 +478,21 @@ def test_equipe_visualiza_apenas_relatorios_atribuidos(
     assert response.status_code == status.HTTP_200_OK
     result_ids = {item["id"] for item in response.data["results"]}
     assert visible_by_team.id in result_ids
-    assert visible_by_user.id in result_ids
+    assert assigned_user_only.id not in result_ids
     assert hidden.id not in result_ids
     assert (
         client.get(f"/api/v1/relatorios/{hidden.id}/").status_code
-        == status.HTTP_404_NOT_FOUND
+        == status.HTTP_403_FORBIDDEN
+    )
+    assert (
+        client.get(
+            f"/api/v1/relatorios/{assigned_user_only.id}/"
+        ).status_code
+        == status.HTTP_403_FORBIDDEN
     )
 
 
-def test_equipe_visualiza_apenas_questionarios_atribuidos(
+def test_equipe_visualiza_questionarios_somente_por_assigned_team(
     authenticate_api_client,
     team_user,
 ):
@@ -505,11 +505,11 @@ def test_equipe_visualiza_apenas_questionarios_atribuidos(
         assigned_team=team,
         assigned_user=None,
     )
-    visible_by_user = QuestionnaireFactory()
+    assigned_user_only = QuestionnaireFactory()
     ReportFactory(
-        campus=visible_by_user.campus,
-        course=CourseFactory(campus=visible_by_user.campus),
-        questionnaire=visible_by_user,
+        campus=assigned_user_only.campus,
+        course=CourseFactory(campus=assigned_user_only.campus),
+        questionnaire=assigned_user_only,
         assigned_team=None,
         assigned_user=team_user,
     )
@@ -526,13 +526,19 @@ def test_equipe_visualiza_apenas_questionarios_atribuidos(
     assert response.status_code == status.HTTP_200_OK
     result_ids = {item["id"] for item in response.data["results"]}
     assert visible_by_team.id in result_ids
-    assert visible_by_user.id in result_ids
+    assert assigned_user_only.id not in result_ids
     assert hidden.id not in result_ids
     assert (
         client.get(
             f"/api/v1/questionarios/{hidden.id}/"
         ).status_code
-        == status.HTTP_404_NOT_FOUND
+        == status.HTTP_403_FORBIDDEN
+    )
+    assert (
+        client.get(
+            f"/api/v1/questionarios/{assigned_user_only.id}/"
+        ).status_code
+        == status.HTTP_403_FORBIDDEN
     )
 
 
@@ -767,14 +773,56 @@ def test_resposta_sem_pergunta_retorna_400(
     assert "question" in response.data
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Relatorio atribuido diretamente por assigned_user aparece no "
-        "escopo, mas can_answer_report exige pertencimento a equipe."
-    ),
-)
-def test_equipe_atribuida_diretamente_pode_responder_relatorio(
+def test_equipe_fora_de_assigned_team_recebe_403_ao_responder(
+    authenticate_api_client,
+    questionnaire,
+    report,
+    text_question,
+):
+    outsider = TeamUserFactory()
+    client = authenticate_api_client(outsider)
+
+    response = client.post(
+        f"/api/v1/questionarios/{questionnaire.id}/responder/",
+        {
+            "report": report.id,
+            "question": text_question.id,
+            "answer": "Resposta indevida",
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert not ReportQuestionAnswer.objects.filter(
+        report=report,
+        question=text_question,
+    ).exists()
+
+
+def test_anonimo_recebe_401_ao_responder(
+    api_client,
+    questionnaire,
+    report,
+    text_question,
+):
+    response = api_client.post(
+        f"/api/v1/questionarios/{questionnaire.id}/responder/",
+        {
+            "report": report.id,
+            "question": text_question.id,
+            "answer": "Resposta anônima",
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert not ReportQuestionAnswer.objects.filter(
+        report=report,
+        question=text_question,
+    ).exists()
+
+
+def test_assigned_user_sem_assigned_team_nao_responde_relatorio(
     authenticate_api_client,
     team_user,
     questionnaire,
@@ -799,9 +847,8 @@ def test_equipe_atribuida_diretamente_pode_responder_relatorio(
         format="json",
     )
 
-    assert response.status_code == status.HTTP_200_OK
-    assert ReportQuestionAnswer.objects.filter(
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert not ReportQuestionAnswer.objects.filter(
         report=report,
         question=text_question,
-        answer="Resposta do usuario atribuido",
     ).exists()

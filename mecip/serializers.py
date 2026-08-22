@@ -90,6 +90,16 @@ class QuestionnaireImportSerializer(serializers.Serializer):
     condicao_especial = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     conceitos = ConceptImportSerializer(many=True, required=False)
 
+    def validate(self, attrs):
+        field_type = self._map_question_type(attrs.get('tipo'))
+        if field_type == 'choice' and not attrs.get('conceitos'):
+            raise serializers.ValidationError({
+                'conceitos': (
+                    'Perguntas de múltipla escolha exigem ao menos uma alternativa.'
+                ),
+            })
+        return attrs
+
     def create(self, validated_data):
         questionnaire = self._get_or_create_questionnaire(validated_data['questionario'])
         section = self._get_or_create_section(questionnaire, validated_data['dimensao'])

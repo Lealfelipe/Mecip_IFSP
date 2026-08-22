@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -11,8 +12,11 @@ from mecip.models import (
     ReferenceAttachment,
     Report,
     ReportQuestionAnswer,
+    Team,
 )
+from mecip.validators import normalize_team_name
 from tests.factories import (
+    CampusFactory,
     DirectAttachmentFactory,
     QuestionAnswerOptionFactory,
     ReportQuestionAnswerFactory,
@@ -23,6 +27,72 @@ from tests.factories import (
 
 
 pytestmark = [pytest.mark.django_db, pytest.mark.unit]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        ("Équipe A", "equipea"),
+        (" EQUIPE A ", "equipea"),
+        ("e q u i p e a", "equipea"),
+        ("ÉQUIPE\tA", "equipea"),
+    ),
+)
+def test_normalizacao_do_nome_da_equipe(value, expected):
+    assert normalize_team_name(value) == expected
+
+
+def test_team_model_rejeita_nome_equivalente_no_mesmo_campus():
+    existing_team = TeamFactory(team_name="Équipe A")
+    duplicate = Team(
+        team_name=" equipea ",
+        campus=existing_team.campus,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        duplicate.full_clean()
+
+    assert (
+        "Já existe uma equipe com este nome neste campus"
+        in error.value.message_dict["team_name"]
+    )
+
+
+def test_team_orm_rejeita_nome_equivalente_no_mesmo_campus():
+    existing_team = TeamFactory(team_name="Équipe A")
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Team.objects.create(
+                team_name=" EQUIPE A ",
+                campus=existing_team.campus,
+            )
+
+
+def test_team_orm_permite_nome_equivalente_em_campus_diferente():
+    TeamFactory(team_name="Équipe A")
+    other_campus = CampusFactory()
+
+    created_team = Team.objects.create(
+        team_name=" equipea ",
+        campus=other_campus,
+    )
+
+    assert created_team.normalized_name == "equipea"
+
+
+def test_constraint_de_banco_rejeita_normalizacao_duplicada():
+    first_team = TeamFactory(team_name="Equipe A")
+    second_team = TeamFactory(
+        team_name="Equipe B",
+        campus=first_team.campus,
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Team.objects.filter(pk=second_team.pk).update(
+                normalized_name=first_team.normalized_name,
+            )
 
 
 def test_relatorio_mesmo_curso_campus_em_ano_diferente_e_criado(

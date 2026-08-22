@@ -18,14 +18,50 @@
             {% endif %}
 
             {% if all_answered and status_to_respond %}
-                <button class="btn" onclick="window.location='{% url 'mecip:advance_report_status' report_id=report.id %}'">Encaminhar para avaliacao</button>
+                <form
+                    method="post"
+                    action="{% url 'mecip:advance_report_status' report_id=report.id %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn">
+                        Encaminhar para avaliacao
+                    </button>
+                </form>
             {% endif %}
 
             {% if can_manage_records and report.status == "Pendente avaliação" %}
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='ajustar' %}'">Encaminhar para ajuste</button>
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='aprovar' %}'">Aprovar</button>
-                <button class="btn" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='bloquear' %}'">Bloquear</button>
-                <button class="btn btn-delete" onclick="window.location='{% url "mecip:change_report_status" report_id=report.id action='reprovar' %}'">Reprovar</button>
+                <form
+                    method="post"
+                    action="{% url 'mecip:change_report_status' report_id=report.id action='ajustar' %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn">
+                        Encaminhar para ajuste
+                    </button>
+                </form>
+                <form
+                    method="post"
+                    action="{% url 'mecip:change_report_status' report_id=report.id action='aprovar' %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Aprovar</button>
+                </form>
+                <form
+                    method="post"
+                    action="{% url 'mecip:change_report_status' report_id=report.id action='bloquear' %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Bloquear</button>
+                </form>
+                <form
+                    method="post"
+                    action="{% url 'mecip:change_report_status' report_id=report.id action='reprovar' %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-delete">
+                        Reprovar
+                    </button>
+                </form>
             {% endif %}
         </div>
 

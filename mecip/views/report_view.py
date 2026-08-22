@@ -4,9 +4,14 @@ from django.contrib import messages
 from django.db.models import Count
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.views.decorators.http import require_POST
 from io import BytesIO
 from mecip.models import Report, Campus, Team
-from mecip.permissions import can_view_all_records
+from mecip.permissions import (
+    access_denied_response,
+    can_view_all_records,
+    can_view_report_questionnaire,
+)
 
 
 def dashboard(request):
@@ -85,6 +90,9 @@ def index_report(request):
 
 def report(request, report_id):
     single_report = get_object_or_404(Report, pk=report_id)
+    if not can_view_report_questionnaire(request.user, single_report):
+        return access_denied_response(request)
+
     can_assign = False
     if request.user.is_authenticated and single_report.assigned_team and single_report.assigned_user is None:
         can_assign = single_report.assigned_team.users.filter(pk=request.user.pk).exists()
@@ -104,6 +112,9 @@ def report(request, report_id):
 
 def report_pdf_download(request, report_id):
     single_report = get_object_or_404(Report, pk=report_id)
+    if not can_view_report_questionnaire(request.user, single_report):
+        return access_denied_response(request)
+
     pdf_bytes = _build_report_pdf(single_report, request)
 
     if pdf_bytes is None:
@@ -156,6 +167,7 @@ def _build_report_pdf(report: Report, request):
     return output.getvalue()
 
 
+@require_POST
 def assign_report(request, report_id):
     report = get_object_or_404(Report, pk=report_id)
 

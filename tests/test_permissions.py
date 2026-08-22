@@ -143,7 +143,7 @@ def test_equipe_nao_responde_questionario_de_outra_equipe(
         },
     )
 
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.api

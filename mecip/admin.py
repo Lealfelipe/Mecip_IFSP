@@ -53,6 +53,18 @@ class Type_Course_Admin(admin.ModelAdmin):
     list_display_links = 'id', 'type_name_course', 'duration', 'type_categorie',
 
 
+@admin.register(models.Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = 'id', 'team_name', 'campus', 'created_date',
+    ordering = 'team_name',
+    search_fields = 'id', 'team_name', 'campus__campus_name',
+    list_filter = 'campus',
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = 'id', 'team_name',
+    filter_horizontal = 'users',
+
+
 @admin.register(models.Questionnaire)
 class QuestionnaireAdmin(admin.ModelAdmin):
     list_display = 'id', 'name', 'campus', 'active',

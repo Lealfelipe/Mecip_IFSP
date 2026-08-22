@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.authtoken.models import Token
@@ -76,9 +75,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         )
         if can_view_all_records(self.request.user):
             return queryset.order_by('-id')
-        return queryset.filter(
-            Q(assigned_user=self.request.user) | Q(assigned_team__users=self.request.user)
-        ).distinct().order_by('-id')
+        if self.action == 'list':
+            return queryset.filter(
+                assigned_team__users=self.request.user,
+            ).distinct().order_by('-id')
+        return queryset.order_by('-id')
 
 
 class QuestionnaireViewSet(viewsets.ModelViewSet):
@@ -92,9 +93,11 @@ class QuestionnaireViewSet(viewsets.ModelViewSet):
         queryset = Questionnaire.objects.select_related('campus').order_by('name')
         if can_manage_records(self.request.user):
             return queryset
-        return queryset.filter(
-            Q(reports__assigned_user=self.request.user) | Q(reports__assigned_team__users=self.request.user)
-        ).distinct()
+        if self.action == 'list':
+            return queryset.filter(
+                reports__assigned_team__users=self.request.user,
+            ).distinct()
+        return queryset
 
     @action(detail=False, methods=['post'], url_path='importar')
     def importar(self, request):
@@ -111,15 +114,23 @@ class QuestionnaireViewSet(viewsets.ModelViewSet):
         serializer = AnswerQuestionnaireSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        reports = Report.objects.filter(questionnaire=questionnaire)
-        if not can_manage_records(request.user):
-            reports = reports.filter(Q(assigned_user=request.user) | Q(assigned_team__users=request.user))
-
         report_id = serializer.validated_data.get('report')
         if report_id:
-            reports = reports.filter(pk=report_id)
+            report = get_object_or_404(
+                Report,
+                pk=report_id,
+                questionnaire=questionnaire,
+            )
+        else:
+            reports = Report.objects.filter(
+                questionnaire=questionnaire,
+            )
+            if not can_manage_records(request.user):
+                reports = reports.filter(
+                    assigned_team__users=request.user,
+                )
+            report = reports.first()
 
-        report = reports.first()
         if report is None:
             return Response(
                 {'detail': 'Questionario nao atribuido ao usuario.'},

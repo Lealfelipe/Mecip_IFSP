@@ -1,4 +1,5 @@
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms.forms import NON_FIELD_ERRORS
 
 from mecip.forms import (
@@ -23,6 +24,7 @@ from mecip.models import QuestionAnswerOption, ReferenceAttachment
 from mecip.permissions import ROLE_EQUIPE
 from tests.factories import (
     CampusFactory,
+    CourseTypeFactory,
     QuestionAnswerOptionFactory,
     TeamFactory,
     UserFactory,
@@ -30,6 +32,28 @@ from tests.factories import (
 
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
+
+MAXIMUM_PDF_SIZE = 10_000_000
+
+
+def uploaded_file(name, size):
+    return SimpleUploadedFile(
+        name,
+        b"x" * size,
+        content_type="application/octet-stream",
+    )
+
+
+def build_attachment_form(form_class, upload, instance=None):
+    return form_class(
+        data={
+            "name": "Documento de teste",
+            "description": "Descrição",
+            "active": "on",
+        },
+        files={"file": upload},
+        instance=instance,
+    )
 
 
 def campus_payload(**overrides):
@@ -91,7 +115,6 @@ def question_payload(section, **overrides):
         "field_type": "text",
         "required": "on",
         "order": "1",
-        "choices": "",
     }
     data.update(overrides)
     return data
@@ -501,10 +524,6 @@ def test_reference_attachment_form_edita_sem_novo_arquivo(
     assert reference.name == "Documento atualizado"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="ReferenceAttachmentForm não valida extensão ou conteúdo.",
-)
 def test_reference_attachment_form_rejeita_upload_executavel(
     invalid_upload,
 ):
@@ -519,6 +538,78 @@ def test_reference_attachment_form_rejeita_upload_executavel(
 
     assert not form.is_valid()
     assert "file" in form.errors
+
+
+@pytest.mark.parametrize(
+    "form_class",
+    (ReferenceAttachmentForm, AttachmentForm),
+    ids=("catalogado", "direto"),
+)
+@pytest.mark.parametrize(
+    "size",
+    (128, MAXIMUM_PDF_SIZE),
+    ids=("abaixo-limite", "limite-exato"),
+)
+def test_formularios_de_anexo_aceitam_pdf_dentro_do_limite(
+    form_class,
+    size,
+):
+    form = build_attachment_form(
+        form_class,
+        uploaded_file("documento.pdf", size),
+    )
+
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.parametrize(
+    "form_class",
+    (ReferenceAttachmentForm, AttachmentForm),
+    ids=("catalogado", "direto"),
+)
+@pytest.mark.parametrize(
+    ("name", "size", "expected_message"),
+    (
+        (
+            "documento.PDF",
+            128,
+            "Envie um arquivo com extensão final .pdf em letras minúsculas.",
+        ),
+        (
+            "documento.exe",
+            128,
+            "Envie um arquivo com extensão final .pdf em letras minúsculas.",
+        ),
+        (
+            "documento.txt",
+            128,
+            "Envie um arquivo com extensão final .pdf em letras minúsculas.",
+        ),
+        (
+            "documento.pdf.exe",
+            128,
+            "Envie um arquivo com extensão final .pdf em letras minúsculas.",
+        ),
+        (
+            "documento.pdf",
+            MAXIMUM_PDF_SIZE + 1,
+            "O arquivo deve ter no máximo 10.000.000 bytes.",
+        ),
+    ),
+)
+def test_formularios_de_anexo_rejeitam_nome_ou_tamanho_invalido(
+    form_class,
+    name,
+    size,
+    expected_message,
+):
+    form = build_attachment_form(
+        form_class,
+        uploaded_file(name, size),
+    )
+
+    assert not form.is_valid()
+    assert expected_message in form.errors["file"]
 
 
 def test_questionnaire_section_form_salva_equipes_autorizadas(
@@ -554,6 +645,10 @@ def test_question_form_salva_pergunta_textual(section):
     assert question.required
 
 
+def test_question_form_nao_expoe_campo_choices():
+    assert "choices" not in QuestionForm().fields
+
+
 def test_question_form_e_formset_salvam_alternativas(section):
     question_form = QuestionForm(
         data=question_payload(section, field_type="choice")
@@ -587,22 +682,30 @@ def test_question_form_e_formset_salvam_alternativas(section):
 def test_question_answer_option_formset_exclui_alternativa(
     multiple_choice_question,
 ):
-    option = QuestionAnswerOptionFactory(
+    first_option = QuestionAnswerOptionFactory(
+        question=multiple_choice_question
+    )
+    second_option = QuestionAnswerOptionFactory(
         question=multiple_choice_question
     )
     prefix = "options"
     formset = QuestionAnswerOptionFormSet(
         data={
-            f"{prefix}-TOTAL_FORMS": "1",
-            f"{prefix}-INITIAL_FORMS": "1",
+            f"{prefix}-TOTAL_FORMS": "2",
+            f"{prefix}-INITIAL_FORMS": "2",
             f"{prefix}-MIN_NUM_FORMS": "0",
             f"{prefix}-MAX_NUM_FORMS": "1000",
-            f"{prefix}-0-id": option.id,
-            f"{prefix}-0-answer_value": option.answer_value,
+            f"{prefix}-0-id": first_option.id,
+            f"{prefix}-0-answer_value": first_option.answer_value,
             f"{prefix}-0-acceptance_criteria": (
-                option.acceptance_criteria
+                first_option.acceptance_criteria
             ),
             f"{prefix}-0-DELETE": "on",
+            f"{prefix}-1-id": second_option.id,
+            f"{prefix}-1-answer_value": second_option.answer_value,
+            f"{prefix}-1-acceptance_criteria": (
+                second_option.acceptance_criteria
+            ),
         },
         instance=multiple_choice_question,
         prefix=prefix,
@@ -612,13 +715,14 @@ def test_question_answer_option_formset_exclui_alternativa(
 
     formset.save()
 
-    assert not QuestionAnswerOption.objects.filter(pk=option.pk).exists()
+    assert not QuestionAnswerOption.objects.filter(
+        pk=first_option.pk
+    ).exists()
+    assert QuestionAnswerOption.objects.filter(
+        pk=second_option.pk
+    ).exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Pergunta choice não exige ao menos uma alternativa.",
-)
 def test_pergunta_de_multipla_escolha_sem_alternativas_e_rejeitada(
     section,
 ):
@@ -626,7 +730,7 @@ def test_pergunta_de_multipla_escolha_sem_alternativas_e_rejeitada(
         data=question_payload(section, field_type="choice")
     )
     assert question_form.is_valid(), question_form.errors
-    question = question_form.save()
+    question = question_form.save(commit=False)
     prefix = "options"
     formset = QuestionAnswerOptionFormSet(
         data={
@@ -643,12 +747,101 @@ def test_pergunta_de_multipla_escolha_sem_alternativas_e_rejeitada(
     )
 
     assert not formset.is_valid()
+    assert (
+        "Perguntas de múltipla escolha exigem ao menos uma alternativa."
+        in formset.non_form_errors()
+    )
+    assert question.pk is None
+
+
+def test_alternativa_com_answer_value_vazio_e_rejeitada(
+    multiple_choice_question,
+):
+    prefix = "options"
+    formset = QuestionAnswerOptionFormSet(
+        data={
+            f"{prefix}-TOTAL_FORMS": "1",
+            f"{prefix}-INITIAL_FORMS": "0",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": "",
+            f"{prefix}-0-answer_value": "",
+            f"{prefix}-0-acceptance_criteria": "Critério preenchido",
+        },
+        instance=multiple_choice_question,
+        prefix=prefix,
+    )
+
+    assert not formset.is_valid()
+    assert "answer_value" in formset.forms[0].errors
+
+
+def test_edicao_nao_pode_excluir_todas_as_alternativas(
+    multiple_choice_question,
+):
+    first_option = QuestionAnswerOptionFactory(
+        question=multiple_choice_question
+    )
+    second_option = QuestionAnswerOptionFactory(
+        question=multiple_choice_question
+    )
+    prefix = "options"
+    formset = QuestionAnswerOptionFormSet(
+        data={
+            f"{prefix}-TOTAL_FORMS": "2",
+            f"{prefix}-INITIAL_FORMS": "2",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": first_option.id,
+            f"{prefix}-0-answer_value": first_option.answer_value,
+            f"{prefix}-0-acceptance_criteria": "",
+            f"{prefix}-0-DELETE": "on",
+            f"{prefix}-1-id": second_option.id,
+            f"{prefix}-1-answer_value": second_option.answer_value,
+            f"{prefix}-1-acceptance_criteria": "",
+            f"{prefix}-1-DELETE": "on",
+        },
+        instance=multiple_choice_question,
+        prefix=prefix,
+    )
+
+    assert not formset.is_valid()
+    assert (
+        "Perguntas de múltipla escolha exigem ao menos uma alternativa."
+        in formset.non_form_errors()
+    )
+    assert QuestionAnswerOption.objects.filter(
+        question=multiple_choice_question
+    ).count() == 2
+
+
+def test_pergunta_textual_nao_exige_alternativa(section):
+    question_form = QuestionForm(data=question_payload(section))
+    assert question_form.is_valid(), question_form.errors
+    question = question_form.save(commit=False)
+    prefix = "options"
+    formset = QuestionAnswerOptionFormSet(
+        data={
+            f"{prefix}-TOTAL_FORMS": "1",
+            f"{prefix}-INITIAL_FORMS": "0",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": "",
+            f"{prefix}-0-answer_value": "",
+            f"{prefix}-0-acceptance_criteria": "",
+        },
+        instance=question,
+        prefix=prefix,
+    )
+
+    assert formset.is_valid(), formset.errors
 
 
 def test_formset_com_upload_cria_referencia_e_remove_upload_direto(
     answer,
     valid_upload,
 ):
+    reference_count = ReferenceAttachment.objects.count()
     prefix = f"attachments_{answer.id}"
     formset = AttachmentFormSet(
         data={
@@ -677,6 +870,8 @@ def test_formset_com_upload_cria_referencia_e_remove_upload_direto(
     assert not attachment.file
     assert reference.description == "Documento enviado"
     assert reference.file.name.startswith("reference_attachments/")
+    assert ReferenceAttachment.objects.count() == reference_count + 1
+    assert ReferenceAttachment.objects.filter(name="Novo anexo").count() == 1
 
 
 def test_attachment_form_rejeita_novo_anexo_sem_arquivo():
@@ -691,10 +886,6 @@ def test_attachment_form_rejeita_novo_anexo_sem_arquivo():
     assert "Selecione um arquivo." in form.errors["file"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="AttachmentForm não valida extensão ou conteúdo.",
-)
 def test_attachment_form_rejeita_upload_executavel(invalid_upload):
     form = AttachmentForm(
         data={
@@ -708,17 +899,12 @@ def test_attachment_form_rejeita_upload_executavel(invalid_upload):
     assert "file" in form.errors
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "AttachmentForm converte o arquivo existente em anexo catalogado "
-        "ao editar apenas os metadados."
-    ),
-)
 def test_attachment_form_edita_sem_substituir_arquivo(
     direct_attachment,
 ):
     original_file = direct_attachment.file.name
+    original_reference_id = direct_attachment.reference_attachment_id
+    reference_count = ReferenceAttachment.objects.count()
     form = AttachmentForm(
         data={
             "name": "Anexo atualizado",
@@ -732,7 +918,55 @@ def test_attachment_form_edita_sem_substituir_arquivo(
     attachment = form.save()
 
     assert attachment.file.name == original_file
+    assert attachment.reference_attachment_id == original_reference_id
     assert attachment.name == "Anexo atualizado"
+    assert ReferenceAttachment.objects.count() == reference_count
+
+
+def test_attachment_form_preserva_anexo_catalogado_ao_editar_metadados(
+    catalogued_attachment,
+):
+    original_file = catalogued_attachment.file.name
+    original_reference_id = catalogued_attachment.reference_attachment_id
+    reference_count = ReferenceAttachment.objects.count()
+    form = AttachmentForm(
+        data={
+            "name": "Anexo catalogado atualizado",
+            "description": "Descrição atualizada",
+        },
+        instance=catalogued_attachment,
+    )
+
+    assert form.is_valid(), form.errors
+
+    attachment = form.save()
+
+    assert attachment.file.name == original_file
+    assert attachment.reference_attachment_id == original_reference_id
+    assert attachment.name == "Anexo catalogado atualizado"
+    assert ReferenceAttachment.objects.count() == reference_count
+
+
+def test_attachment_form_cataloga_novo_arquivo_uma_unica_vez(
+    direct_attachment,
+):
+    reference_count = ReferenceAttachment.objects.count()
+    form = build_attachment_form(
+        AttachmentForm,
+        uploaded_file("substituicao.pdf", 128),
+        instance=direct_attachment,
+    )
+
+    assert form.is_valid(), form.errors
+
+    attachment = form.save()
+
+    assert not attachment.file
+    assert attachment.reference_attachment is not None
+    assert ReferenceAttachment.objects.count() == reference_count + 1
+    assert ReferenceAttachment.objects.filter(
+        pk=attachment.reference_attachment_id
+    ).count() == 1
 
 
 def test_attachment_formset_exclui_anexo_existente(
@@ -817,16 +1051,17 @@ def test_type_course_form_rejeita_duracao_acima_do_limite(
     assert "duration" in form.errors
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Validador de type_name_course está nomeado clean_campus_name.",
+@pytest.mark.parametrize(
+    "reserved_name",
+    ("ABC", "abc", " A B C "),
 )
-def test_type_course_form_rejeita_nome_reservado_abc(
+def test_type_course_form_rejeita_nome_reservado_abc_na_criacao(
     course_category,
+    reserved_name,
 ):
     form = TypeCourseForm(
         data={
-            "type_name_course": "ABC",
+            "type_name_course": reserved_name,
             "duration": "8",
             "type_categorie": course_category.id,
         }
@@ -834,6 +1069,34 @@ def test_type_course_form_rejeita_nome_reservado_abc(
 
     assert not form.is_valid()
     assert "type_name_course" in form.errors
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    ("ABC", "abc", " A B C "),
+)
+def test_type_course_form_rejeita_nome_reservado_abc_na_edicao(
+    course_category,
+    reserved_name,
+):
+    course_type = CourseTypeFactory(
+        type_name_course="Nome original",
+        type_categorie=course_category,
+    )
+    form = TypeCourseForm(
+        data={
+            "type_name_course": reserved_name,
+            "duration": "8",
+            "type_categorie": course_category.id,
+        },
+        instance=course_type,
+    )
+
+    assert not form.is_valid()
+    assert "type_name_course" in form.errors
+
+    course_type.refresh_from_db()
+    assert course_type.type_name_course == "Nome original"
 
 
 def test_team_form_salva_equipe_vinculada_ao_campus(campus):
@@ -852,11 +1115,12 @@ def test_team_form_salva_equipe_vinculada_ao_campus(campus):
     assert team.campus == campus
 
 
-def test_team_form_rejeita_nome_duplicado_no_mesmo_campus(team):
+def test_team_form_rejeita_nome_equivalente_no_mesmo_campus():
+    existing_team = TeamFactory(team_name="Équipe A")
     form = TeamForm(
         data={
-            "team_name": team.team_name,
-            "campus": team.campus_id,
+            "team_name": " equipea ",
+            "campus": existing_team.campus_id,
         }
     )
 
@@ -867,16 +1131,12 @@ def test_team_form_rejeita_nome_duplicado_no_mesmo_campus(team):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="clean_team_name consulta o campus antes de ele ser limpo.",
-)
-def test_team_form_permite_mesmo_nome_em_campus_diferente():
-    existing_team = TeamFactory(team_name="Equipe compartilhada")
+def test_team_form_permite_nome_equivalente_em_campus_diferente():
+    existing_team = TeamFactory(team_name="Équipe A")
     other_campus = CampusFactory()
     form = TeamForm(
         data={
-            "team_name": existing_team.team_name,
+            "team_name": " EQUIPE A ",
             "campus": other_campus.id,
         }
     )
@@ -884,10 +1144,11 @@ def test_team_form_permite_mesmo_nome_em_campus_diferente():
     assert form.is_valid(), form.errors
 
 
-def test_team_form_edita_mesma_instancia_sem_acusar_duplicidade(team):
+def test_team_form_edita_mesma_instancia_com_nome_equivalente():
+    team = TeamFactory(team_name="Équipe A")
     form = TeamForm(
         data={
-            "team_name": team.team_name,
+            "team_name": " equipea ",
             "campus": team.campus_id,
         },
         instance=team,

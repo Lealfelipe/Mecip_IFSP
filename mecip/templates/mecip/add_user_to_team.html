@@ -1,4 +1,5 @@
 {% extends "global/base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-5">
@@ -62,7 +63,7 @@
 
 {% endblock %}
 {% block extra_js %}
-    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <script src="{% static 'vendor/tom-select/2.6.2/tom-select.complete.min.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function(){
             var selects = document.querySelectorAll('.js-select');

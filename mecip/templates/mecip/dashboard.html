@@ -1,4 +1,5 @@
 {% extends "global/base.html" %}
+{% load static %}
 
 {% block content %}
     <section class="dashboard-header">
@@ -60,6 +61,22 @@
         </div>
     </section>
 
+    {% comment %} <section class="chart-container" aria-labelledby="status-chart-title">
+        <div class="card">
+            <h2 id="status-chart-title">Distribuição de relatórios por status</h2>
+            <canvas
+                id="statusChart"
+                role="img"
+                aria-label="Gráfico da distribuição de relatórios por status"
+            >
+                Distribuição de relatórios por status.
+            </canvas>
+        </div>
+    </section> {% endcomment %}
+
+    {{ status_labels|json_script:"status-labels" }}
+    {{ status_data|json_script:"status-data" }}
+
     <section class="dashboard-table">
         <div class="responsive-table">
             <table class="contacts-table">
@@ -100,3 +117,8 @@
 
     
 {% endblock content %}
+
+{% block extra_js %}
+    <script src="{% static 'vendor/chart.js/4.5.1/chart.umd.min.js' %}"></script>
+    <script src="{% static 'mecip/js/dashboard.js' %}"></script>
+{% endblock %}

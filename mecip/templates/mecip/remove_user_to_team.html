@@ -18,7 +18,7 @@
                                 <form method="post" action="{% url 'mecip:remove_user_from_team' team.id user.id %}" class="m-0">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-icon" aria-label="Remover {{ user.get_full_name|default:user.username }}">
-                                        <i class="fi fi-br-cross"></i>
+                                        <i class="fi fi-sr-cross"></i>
                                     </button>
                                 </form>
                             </div>

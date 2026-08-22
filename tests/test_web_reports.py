@@ -1,14 +1,22 @@
 import pytest
 from django.contrib.messages import get_messages
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from mecip.models import Attachments, Report, ReportQuestionAnswer
+from mecip.models import (
+    Attachments,
+    ReferenceAttachment,
+    Report,
+    ReportQuestionAnswer,
+)
 from tests.factories import (
+    CoordinatorFactory,
     CourseFactory,
     QuestionnaireFactory,
     ReferenceAttachmentFactory,
     ReportFactory,
     ReportQuestionAnswerFactory,
+    SuperAdminFactory,
     TeamFactory,
     TeamUserFactory,
 )
@@ -199,6 +207,31 @@ def test_dashboard_combina_filtros_e_calcula_contadores(
     assert response.context["status_data"]
 
 
+def test_dashboard_de_equipe_usa_somente_assigned_team(
+    client,
+    team_user,
+):
+    team = TeamFactory(users=(team_user,))
+    visible = ReportFactory(
+        assigned_team=team,
+        assigned_user=None,
+    )
+    assigned_user_only = ReportFactory(
+        assigned_team=None,
+        assigned_user=team_user,
+    )
+    hidden = ReportFactory()
+    client.force_login(team_user)
+
+    response = client.get(reverse("mecip:dashboard"))
+
+    report_ids = {report.id for report in response.context["reports"]}
+    assert report_ids == {visible.id}
+    assert assigned_user_only.id not in report_ids
+    assert hidden.id not in report_ids
+    assert response.context["total_reports"] == 1
+
+
 def test_listagem_de_relatorios_isola_equipes(
     client,
     team_user,
@@ -217,14 +250,7 @@ def test_listagem_de_relatorios_isola_equipes(
     assert hidden.id not in report_ids
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A listagem web considera apenas assigned_team e ignora "
-        "assigned_user quando nao existe equipe atribuida."
-    ),
-)
-def test_usuario_atribuido_diretamente_visualiza_relatorio_na_listagem(
+def test_assigned_user_isolado_nao_visualiza_relatorio_na_listagem(
     client,
     team_user,
 ):
@@ -236,7 +262,7 @@ def test_usuario_atribuido_diretamente_visualiza_relatorio_na_listagem(
 
     response = client.get(reverse("mecip:index_report"))
 
-    assert report in response.context["page_obj"]
+    assert report not in response.context["page_obj"]
 
 
 def test_detalhe_indica_quando_usuario_pode_assumir_relatorio(
@@ -258,59 +284,55 @@ def test_detalhe_indica_quando_usuario_pode_assumir_relatorio(
     assert response.context["can_assign"] is True
 
 
-def test_get_atribui_relatorio_e_documenta_risco_de_csrf(
+def test_assigned_user_isolado_recebe_403_no_detalhe(
     client,
     team_user,
 ):
-    team = TeamFactory(users=(team_user,))
     report = ReportFactory(
-        assigned_team=team,
-        assigned_user=None,
-        status="Pendente",
+        assigned_team=None,
+        assigned_user=team_user,
     )
-    client.force_login(team_user)
-
-    response = client.get(
-        reverse("mecip:assign_report", args=(report.id,))
-    )
-    report.refresh_from_db()
-
-    assert response.status_code == 302
-    assert report.assigned_user == team_user
-    assert report.status == "Em andamento"
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="O detalhe de relatorio nao valida o escopo da equipe.",
-)
-def test_equipe_nao_acessa_detalhe_de_relatorio_alheio(
-    client,
-    team_user,
-):
-    report = ReportFactory()
     client.force_login(team_user)
 
     response = client.get(
         reverse("mecip:report", args=(report.id,))
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 403
+    assert "mecip/access_denied.html" in [
+        template.name for template in response.templates
+    ]
+    assert "report" not in response.context
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "O detalhe de curso inclui todos os relatorios sem filtrar "
-        "pelo escopo do usuario."
+@pytest.mark.parametrize(
+    "manager_factory",
+    (
+        pytest.param(CoordinatorFactory, id="coordenador"),
+        pytest.param(SuperAdminFactory, id="superadmin"),
     ),
 )
-def test_detalhe_de_curso_nao_expoe_relatorio_de_outra_equipe(
+def test_gestor_acessa_detalhe_de_qualquer_relatorio(
+    client,
+    manager_factory,
+):
+    report = ReportFactory()
+    client.force_login(manager_factory())
+
+    response = client.get(
+        reverse("mecip:report", args=(report.id,))
+    )
+
+    assert response.status_code == 200
+    assert response.context["report"] == report
+
+
+def test_detalhe_de_curso_exibe_relatorio_alheio_sem_conceder_acesso(
     client,
     team_user,
 ):
     course = CourseFactory()
-    hidden = ReportFactory(
+    foreign_report = ReportFactory(
         campus=course.campus,
         course=course,
     )
@@ -320,7 +342,13 @@ def test_detalhe_de_curso_nao_expoe_relatorio_de_outra_equipe(
         reverse("mecip:course", args=(course.id,))
     )
 
-    assert hidden not in response.context["reports"]
+    assert response.status_code == 200
+    assert foreign_report in response.context["reports"]
+
+    report_response = client.get(
+        reverse("mecip:report", args=(foreign_report.id,))
+    )
+    assert report_response.status_code == 403
 
 
 def test_visualizacao_cria_respostas_e_exibe_contexto(
@@ -457,25 +485,76 @@ def test_resposta_processa_upload_direto(
         answer=answer,
         reference_attachment__name="Upload da interface",
     ).exists()
+    assert ReferenceAttachment.objects.filter(
+        name="Upload da interface"
+    ).count() == 1
 
 
-def test_usuario_sem_acesso_e_redirecionado_do_questionario(
+def test_resposta_rejeita_upload_acima_do_limite(
+    client,
+    team_user,
+    report,
+    text_question,
+):
+    client.force_login(team_user)
+    client.get(
+        reverse("mecip:answer_questionnaire", args=(report.id,))
+    )
+    answer = ReportQuestionAnswer.objects.get(
+        report=report,
+        question=text_question,
+    )
+    attachment_count = Attachments.objects.count()
+    reference_count = ReferenceAttachment.objects.count()
+    prefix = f"attachments_{answer.id}"
+
+    response = client.post(
+        reverse("mecip:answer_questionnaire", args=(report.id,)),
+        {
+            f"answer_{answer.id}": "Resposta com upload inválido",
+            "action": "save_and_exit",
+            f"{prefix}-TOTAL_FORMS": "1",
+            f"{prefix}-INITIAL_FORMS": "0",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": "",
+            f"{prefix}-0-name": "Upload acima do limite",
+            f"{prefix}-0-description": "Documento inválido",
+            f"{prefix}-0-file": SimpleUploadedFile(
+                "documento.pdf",
+                b"x" * (10_000_000 + 1),
+                content_type="application/pdf",
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    assert Attachments.objects.count() == attachment_count
+    assert ReferenceAttachment.objects.count() == reference_count
+
+
+@pytest.mark.parametrize(
+    "route_name",
+    ("view_questionnaire", "answer_questionnaire"),
+)
+def test_usuario_sem_acesso_recebe_403_antes_de_carregar_respostas(
     client,
     report,
+    route_name,
 ):
     unrelated_user = TeamUserFactory()
     client.force_login(unrelated_user)
+    answer_count = ReportQuestionAnswer.objects.count()
 
     response = client.get(
-        reverse("mecip:view_questionnaire", args=(report.id,))
+        reverse(f"mecip:{route_name}", args=(report.id,))
     )
 
-    assert response.status_code == 302
-    assert response.url == reverse("mecip:report", args=(report.id,))
-    assert any(
-        "Somente membro" in message
-        for message in response_messages(response)
-    )
+    assert response.status_code == 403
+    assert "mecip/access_denied.html" in [
+        template.name for template in response.templates
+    ]
+    assert ReportQuestionAnswer.objects.count() == answer_count
 
 
 def test_relatorio_sem_questionario_redireciona_com_erro(
@@ -501,64 +580,6 @@ def test_relatorio_sem_questionario_redireciona_com_erro(
     )
 
 
-def test_get_avanca_status_e_documenta_risco_de_csrf(
-    client,
-    team_user,
-    report,
-    text_question,
-):
-    ReportQuestionAnswerFactory(
-        report=report,
-        question=text_question,
-        answer="Resposta completa",
-    )
-    client.force_login(team_user)
-
-    response = client.get(
-        reverse("mecip:advance_report_status", args=(report.id,))
-    )
-    report.refresh_from_db()
-
-    assert response.status_code == 302
-    assert report.status == "Pendente avaliação"
-
-
-@pytest.mark.parametrize(
-    ("action", "expected_status"),
-    (
-        pytest.param("aprovar", "Aprovado", id="aprovar"),
-        pytest.param("bloquear", "Bloqueado", id="bloquear"),
-        pytest.param("ajustar", "Pendente ajuste", id="ajustar"),
-        pytest.param("reprovar", "Reprovado", id="reprovar"),
-    ),
-)
-def test_get_altera_status_e_documenta_risco_de_csrf(
-    client,
-    coordinator,
-    report,
-    text_question,
-    action,
-    expected_status,
-):
-    ReportQuestionAnswerFactory(
-        report=report,
-        question=text_question,
-        answer="Resposta completa",
-    )
-    client.force_login(coordinator)
-
-    response = client.get(
-        reverse(
-            "mecip:change_report_status",
-            args=(report.id, action),
-        )
-    )
-    report.refresh_from_db()
-
-    assert response.status_code == 302
-    assert report.status == expected_status
-
-
 def test_status_nao_avanca_com_resposta_incompleta(
     client,
     team_user,
@@ -573,7 +594,7 @@ def test_status_nao_avanca_com_resposta_incompleta(
     original_status = report.status
     client.force_login(team_user)
 
-    response = client.get(
+    response = client.post(
         reverse("mecip:advance_report_status", args=(report.id,))
     )
     report.refresh_from_db()
@@ -586,12 +607,19 @@ def test_status_nao_avanca_com_resposta_incompleta(
     )
 
 
-def test_download_pdf_retorna_arquivo_valido(
+@pytest.mark.parametrize(
+    "manager_factory",
+    (
+        pytest.param(CoordinatorFactory, id="coordenador"),
+        pytest.param(SuperAdminFactory, id="superadmin"),
+    ),
+)
+def test_gestor_baixa_pdf_valido(
     client,
-    coordinator,
     report,
+    manager_factory,
 ):
-    client.force_login(coordinator)
+    client.force_login(manager_factory())
 
     response = client.get(
         reverse("mecip:report_pdf_download", args=(report.id,))
@@ -604,22 +632,52 @@ def test_download_pdf_retorna_arquivo_valido(
     assert len(response.content) > 100
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="O download de PDF nao valida o escopo do relatorio.",
-)
-def test_equipe_nao_baixa_pdf_de_relatorio_alheio(
+def test_membro_de_assigned_team_baixa_pdf(
     client,
     team_user,
 ):
-    report = ReportFactory()
+    team = TeamFactory(users=(team_user,))
+    report = ReportFactory(
+        assigned_team=team,
+        assigned_user=None,
+    )
     client.force_login(team_user)
 
     response = client.get(
         reverse("mecip:report_pdf_download", args=(report.id,))
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response.content.startswith(b"%PDF")
+
+
+def test_usuario_fora_de_assigned_team_recebe_403_sem_gerar_pdf(
+    client,
+    team_user,
+    monkeypatch,
+):
+    report = ReportFactory(
+        assigned_team=None,
+        assigned_user=team_user,
+    )
+    client.force_login(team_user)
+
+    def forbidden_builder(*args, **kwargs):
+        pytest.fail("O gerador de PDF não deveria ser chamado")
+
+    monkeypatch.setattr(
+        "mecip.views.report_view._build_report_pdf",
+        forbidden_builder,
+    )
+
+    response = client.get(
+        reverse("mecip:report_pdf_download", args=(report.id,))
+    )
+
+    assert response.status_code == 403
+    assert "mecip/access_denied.html" in [
+        template.name for template in response.templates
+    ]
 
 
 def test_endpoints_auxiliares_filtram_campus_e_cursos(
