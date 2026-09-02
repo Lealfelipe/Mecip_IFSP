@@ -3,8 +3,21 @@
 {% block content %}
     <div class="questionnaire-wizard">
         <aside class="questionnaire-steps">
-            <h2>{{ report.questionnaire.name }}</h2>
-            <ul class="wizard-steps">
+            <div class="questionnaire-steps-header">
+                <h2>{{ report.questionnaire.name }}</h2>
+                <button
+                    type="button"
+                    class="questionnaire-steps-toggle"
+                    data-questionnaire-steps-toggle
+                    aria-expanded="true"
+                    aria-controls="questionnaire-step-list"
+                    aria-label="Recolher indicadores"
+                    title="Recolher indicadores"
+                >
+                    <i class="fi fi-sr-angle-up"></i>
+                </button>
+            </div>
+            <ul class="wizard-steps" id="questionnaire-step-list">
                 {% for step in question_steps %}
                     <li class="wizard-step {% if step.is_current %}is-current{% endif %} {% if step.is_completed %}is-completed{% endif %}">
                         <button
@@ -70,17 +83,37 @@
                                 <span class="acceptance-criteria-label">Critério de aceitação:</span>
                                 <div id="criteria_{{ answer.id }}" class="acceptance-criteria"></div>
                             {% else %}
-                                <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer }}</textarea>
+                                <textarea id="id_answer_{{ answer.id }}" name="answer_{{ answer.id }}" rows="3" class="form-control">{{ answer.answer|default_if_none:"" }}</textarea>
                             {% endif %}
 
-                            <div class="free-text-section">
+                            <div
+                                class="free-text-section"
+                                data-character-counter-container
+                            >
                                 <label for="id_free_text_{{ answer.id }}">Explore sua argumentação</label>
                                 <textarea
                                     id="id_free_text_{{ answer.id }}"
                                     name="free_text_{{ answer.id }}"
                                     rows="3"
                                     class="form-control"
-                                >{{ answer.free_text }}</textarea>
+                                    maxlength="{{ argumentation_character_limit }}"
+                                    data-character-limit="{{ argumentation_character_limit }}"
+                                    aria-describedby="free_text_counter_{{ answer.id }} free_text_notice_{{ answer.id }}"
+                                >{{ answer.free_text|default_if_none:"" }}</textarea>
+                                <div class="character-counter-row">
+                                    <small
+                                        id="free_text_notice_{{ answer.id }}"
+                                        class="character-limit-notice"
+                                        aria-live="polite"
+                                    ></small>
+                                    <small
+                                        id="free_text_counter_{{ answer.id }}"
+                                        class="character-counter"
+                                    >
+                                        0 / {{ argumentation_character_limit }}
+                                        caracteres
+                                    </small>
+                                </div>
                             </div>
 
                             <div class="attachment-section">
@@ -89,6 +122,13 @@
                                 {% if answer.attachments.exists %}
                                     <div class="saved-attachments">
                                         <h4>Anexos enviados</h4>
+                                        <div
+                                            class="message attachment-copy-alert"
+                                            data-copy-attachment-alert
+                                            role="alert"
+                                            aria-atomic="true"
+                                            hidden
+                                        ></div>
 
                                         {% for attachment_form in attachment_formset %}
                                             {% if attachment_form.instance.pk %}
@@ -99,7 +139,7 @@
                                                     {% endif %}
 
                                                     <div class="saved-attachment-summary">
-                                                        <a href="{{ attachment_form.instance.file_url }}" target="_blank" rel="noopener noreferrer">
+                                                        <a href="{{ attachment_form.instance.public_path }}" target="_blank" rel="noopener noreferrer">
                                                             {{ attachment_form.instance.name }}
                                                         </a>
                                                         {% if attachment_form.instance.description %}
@@ -108,6 +148,16 @@
                                                     </div>
 
                                                     <div class="saved-attachment-actions">
+                                                        <button
+                                                            type="button"
+                                                            class="attachment-icon-btn attachment-copy-btn"
+                                                            data-copy-attachment-link
+                                                            data-attachment-url="{{ attachment_form.instance.public_path }}"
+                                                            aria-label="Copiar link do anexo"
+                                                            title="Copiar link do anexo"
+                                                        >
+                                                            <i class="fi fi-sr-copy"></i>
+                                                        </button>
                                                         <button type="button" class="attachment-icon-btn" data-edit-attachment aria-label="Editar anexo" title="Editar anexo">
                                                             <i class="fi fi-sr-pencil"></i>
                                                         </button>
@@ -289,7 +339,7 @@
                                         <td>{{ reference_attachment.name }}</td>
                                         <td>{{ reference_attachment.description|default:"---" }}</td>
                                         <td>
-                                            <a href="{{ reference_attachment.file.url }}" target="_blank" rel="noopener noreferrer">
+                                            <a href="{{ reference_attachment.public_path }}" target="_blank" rel="noopener noreferrer">
                                                 Visualizar
                                             </a>
                                         </td>
@@ -310,6 +360,54 @@
     </div>
 
     <script>
+        const questionnaireStepsToggle = document.querySelector(
+            '[data-questionnaire-steps-toggle]'
+        );
+        const questionnaireStepsList = document.getElementById(
+            'questionnaire-step-list'
+        );
+        const questionnaireMobileQuery = window.matchMedia(
+            '(max-width: 900px)'
+        );
+
+        if (questionnaireStepsToggle && questionnaireStepsList) {
+            let stepsExpanded = !questionnaireMobileQuery.matches;
+
+            const updateQuestionnaireSteps = () => {
+                const isExpanded = (
+                    !questionnaireMobileQuery.matches
+                    || stepsExpanded
+                );
+
+                questionnaireStepsList.hidden = !isExpanded;
+                questionnaireStepsToggle.setAttribute(
+                    'aria-expanded',
+                    String(isExpanded),
+                );
+
+                const label = isExpanded
+                    ? 'Recolher indicadores'
+                    : 'Expandir indicadores';
+                questionnaireStepsToggle.setAttribute(
+                    'aria-label',
+                    label,
+                );
+                questionnaireStepsToggle.title = label;
+            };
+
+            questionnaireStepsToggle.addEventListener('click', () => {
+                stepsExpanded = !stepsExpanded;
+                updateQuestionnaireSteps();
+            });
+
+            questionnaireMobileQuery.addEventListener('change', (event) => {
+                stepsExpanded = !event.matches;
+                updateQuestionnaireSteps();
+            });
+
+            updateQuestionnaireSteps();
+        }
+
         document.querySelectorAll('input[type="radio"][data-criteria]').forEach((input) => {
             const updateCriteria = () => {
                 const answerId = input.name.replace('answer_option_', '');
@@ -325,6 +423,125 @@
         const attachmentFields = document.getElementById('attachment-fields');
         const questionnaireForm = document.getElementById('questionnaire-answer-form');
         let formHasUnsavedChanges = false;
+
+        const freeTextField = document.querySelector('[data-character-limit]');
+        const characterCounterContainer = document.querySelector(
+            '[data-character-counter-container]'
+        );
+        const characterCounter = characterCounterContainer?.querySelector(
+            '.character-counter'
+        );
+        const characterLimitNotice = characterCounterContainer?.querySelector(
+            '.character-limit-notice'
+        );
+
+        if (
+            freeTextField
+            && characterCounterContainer
+            && characterCounter
+            && characterLimitNotice
+        ) {
+            const characterLimit = Number(freeTextField.dataset.characterLimit);
+            const warningThreshold = characterLimit * 0.8;
+
+            const updateCharacterCounter = (limitExceeded = false) => {
+                const currentLength = freeTextField.value.length;
+                const isExceeded = limitExceeded || currentLength > characterLimit;
+                const isWarning = (
+                    !isExceeded
+                    && currentLength > warningThreshold
+                );
+
+                characterCounter.textContent = (
+                    `${currentLength} / ${characterLimit} caracteres`
+                );
+                characterCounterContainer.classList.toggle(
+                    'is-warning',
+                    isWarning,
+                );
+                characterCounterContainer.classList.toggle(
+                    'is-limit-exceeded',
+                    isExceeded,
+                );
+
+                if (isExceeded) {
+                    characterLimitNotice.textContent = (
+                        `Limite de ${characterLimit} caracteres atingido.`
+                    );
+                } else if (isWarning) {
+                    characterLimitNotice.textContent = (
+                        'Você ultrapassou 80% do limite disponível.'
+                    );
+                } else {
+                    characterLimitNotice.textContent = '';
+                }
+            };
+
+            freeTextField.addEventListener('beforeinput', (event) => {
+                if (!event.inputType.startsWith('insert')) return;
+
+                const selectedLength = (
+                    freeTextField.selectionEnd
+                    - freeTextField.selectionStart
+                );
+                const insertedLength = event.data?.length || 0;
+                const nextLength = (
+                    freeTextField.value.length
+                    - selectedLength
+                    + insertedLength
+                );
+
+                if (
+                    insertedLength > 0
+                    && nextLength > characterLimit
+                ) {
+                    event.preventDefault();
+                    updateCharacterCounter(true);
+                }
+            });
+
+            freeTextField.addEventListener('paste', (event) => {
+                const pastedText = event.clipboardData.getData('text');
+                const selectedLength = (
+                    freeTextField.selectionEnd
+                    - freeTextField.selectionStart
+                );
+                const availableLength = (
+                    characterLimit
+                    - freeTextField.value.length
+                    + selectedLength
+                );
+
+                if (pastedText.length <= availableLength) return;
+
+                event.preventDefault();
+                freeTextField.setRangeText(
+                    pastedText.slice(0, Math.max(availableLength, 0)),
+                    freeTextField.selectionStart,
+                    freeTextField.selectionEnd,
+                    'end',
+                );
+                freeTextField.dispatchEvent(
+                    new Event('input', {bubbles: true})
+                );
+                updateCharacterCounter(true);
+            });
+
+            freeTextField.addEventListener('input', () => {
+                if (freeTextField.value.length > characterLimit) {
+                    freeTextField.value = freeTextField.value.slice(
+                        0,
+                        characterLimit,
+                    );
+                    updateCharacterCounter(true);
+                    return;
+                }
+
+                updateCharacterCounter();
+            });
+
+            updateCharacterCounter();
+        }
 
         if (showAttachmentFields && attachmentFields) {
             showAttachmentFields.addEventListener('click', () => {
@@ -446,6 +663,89 @@
                 const item = button.closest('[data-attachment-item]');
                 const editFields = item.querySelector('.attachment-edit-fields');
                 editFields.hidden = !editFields.hidden;
+            });
+        });
+
+        const copyToClipboard = async (text) => {
+            if (navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                } catch {
+                    // Usa o fallback abaixo quando a permissão for negada.
+                }
+            }
+
+            const temporaryField = document.createElement('textarea');
+            temporaryField.value = text;
+            temporaryField.setAttribute('readonly', '');
+            temporaryField.style.position = 'fixed';
+            temporaryField.style.opacity = '0';
+            document.body.appendChild(temporaryField);
+            temporaryField.select();
+
+            const copied = document.execCommand('copy');
+            temporaryField.remove();
+
+            if (!copied) {
+                throw new Error('Não foi possível copiar o link.');
+            }
+        };
+
+        document.querySelectorAll('[data-copy-attachment-link]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const icon = button.querySelector('i');
+                const alert = document.querySelector(
+                    '[data-copy-attachment-alert]'
+                );
+                const attachmentUrl = new URL(
+                    button.dataset.attachmentUrl,
+                    window.location.origin,
+                ).href;
+
+                window.clearTimeout(button.copyResetTimer);
+                window.clearTimeout(alert.copyAlertTimer);
+
+                try {
+                    await copyToClipboard(attachmentUrl);
+                    button.classList.add('is-copy-success');
+                    button.classList.remove('is-copy-error');
+                    icon.classList.replace('fi-sr-copy', 'fi-sr-check');
+                    button.setAttribute('aria-label', 'Link copiado');
+                    button.title = 'Link copiado';
+                    alert.classList.add('success');
+                    alert.classList.remove('error');
+                    alert.textContent = 'Link copiado';
+                } catch {
+                    button.classList.add('is-copy-error');
+                    button.classList.remove('is-copy-success');
+                    button.setAttribute(
+                        'aria-label',
+                        'Não foi possível copiar o link',
+                    );
+                    button.title = 'Não foi possível copiar o link';
+                    alert.classList.add('error');
+                    alert.classList.remove('success');
+                    alert.textContent = 'Não foi possível copiar o link';
+                }
+
+                alert.hidden = false;
+                alert.copyAlertTimer = window.setTimeout(() => {
+                    alert.hidden = true;
+                }, 3000);
+
+                button.copyResetTimer = window.setTimeout(() => {
+                    button.classList.remove(
+                        'is-copy-success',
+                        'is-copy-error',
+                    );
+                    icon.classList.replace('fi-sr-check', 'fi-sr-copy');
+                    button.setAttribute(
+                        'aria-label',
+                        'Copiar link do anexo',
+                    );
+                    button.title = 'Copiar link do anexo';
+                }, 2000);
             });
         });
 

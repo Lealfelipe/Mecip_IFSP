@@ -1,9 +1,32 @@
-from django.urls import path
+from django.urls import path, register_converter
 from mecip import views
+from mecip.url_converters import PublicIdConverter
+
+register_converter(PublicIdConverter, 'public_id')
 
 app_name = 'mecip'
 
 urlpatterns = [
+    path(
+        'a/r/<public_id:public_id>/',
+        views.public_reference_attachment,
+        name='public_reference_attachment',
+    ),
+    path(
+        'a/d/<public_id:public_id>/',
+        views.public_answer_attachment,
+        name='public_answer_attachment',
+    ),
+    path(
+        'anexos/publicos/referencia/<uuid:public_id>/',
+        views.public_reference_attachment,
+        name='legacy_public_reference_attachment',
+    ),
+    path(
+        'anexos/publicos/resposta/<uuid:public_id>/',
+        views.public_answer_attachment,
+        name='legacy_public_answer_attachment',
+    ),
     path('', views.dashboard, name='connected_index'),
     path('campus/', views.index, name='index'),
     path('login/', views.login_view, name='login'),

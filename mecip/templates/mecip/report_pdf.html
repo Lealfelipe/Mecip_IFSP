@@ -73,50 +73,56 @@
     <div>
         {% if report.questionnaire %}
             {% if answers %}
-                {% regroup answers by question.section as answer_sections %}
-
-                {% for answer_section in answer_sections %}
+                {% for answer in answers %}
                     <div class="block">
                         <h2 class="title">
-                            Seção: {{ answer_section.grouper.name }}
+                            Indicador:
+                            {% if answer.question.indicator %}
+                                {{ answer.question.indicator }}
+                            {% else %}
+                                Questão {{ forloop.counter }}
+                            {% endif %}
                         </h2>
 
-                        {% for answer in answer_section.list %}
-                            <div class="question">
-                                <p>
-                                    <strong>Pergunta:</strong>
-                                    {{ answer.question.text }}
-                                </p>
+                        <div class="question">
+                            <p>
+                                <strong>Questão:</strong>
+                                {{ answer.question.text }}
+                            </p>
 
-                                <p>
-                                    <strong>Nota:</strong>
-                                    {{ answer.answer|default:"---" }}
-                                    |
-                                    <strong>Critério de aceite:</strong>
-                                    {% if answer.selected_answer_option.acceptance_criteria %}
-                                        {{ answer.selected_answer_option.acceptance_criteria }}
-                                    {% else %}
-                                        ---
-                                    {% endif %}
-                                </p>
+                            <p>
+                                <strong>Nota:</strong>
+                                {{ answer.answer|default:"---" }}
+                                |
+                                <strong>Critério de aceite:</strong>
+                                {% if answer.selected_answer_option.acceptance_criteria %}
+                                    {{ answer.selected_answer_option.acceptance_criteria }}
+                                {% else %}
+                                    ---
+                                {% endif %}
+                            </p>
 
-                                <p>
-                                    <strong>Anexos:</strong>
-                                    {% if answer.attachments.exists %}
-                                        {% for attachment in answer.attachments.all %}
-                                            <a
-                                                class="attachment-link"
-                                                href="{{ attachment.pdf_url }}"
-                                            >
-                                                {{ attachment.name }}
-                                            </a>{% if not forloop.last %}, {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        ---
-                                    {% endif %}
-                                </p>
-                            </div>
-                        {% endfor %}
+                            <p>
+                                <strong>Argumentação:</strong>
+                                {{ answer.free_text|default:"---"|linebreaksbr }}
+                            </p>
+
+                            <p>
+                                <strong>Anexos:</strong>
+                                {% if answer.attachments.exists %}
+                                    {% for attachment in answer.attachments.all %}
+                                        <a
+                                            class="attachment-link"
+                                            href="{{ attachment.pdf_url }}"
+                                        >
+                                            {{ attachment.name }}
+                                        </a>{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    ---
+                                {% endif %}
+                            </p>
+                        </div>
                     </div>
                 {% endfor %}
             {% else %}

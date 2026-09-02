@@ -262,12 +262,32 @@ class ReportForm(forms.ModelForm):
 class QuestionnaireForm(forms.ModelForm):
     class Meta:
         model = Questionnaire
-        fields = ('name', 'description', 'campus', 'active')
+        fields = (
+            'name',
+            'description',
+            'campus',
+            'argumentation_character_limit',
+            'active',
+        )
         labels = {
             'name': 'Nome do Questionário',
             'description': 'Descrição',
             'campus': 'Campus',
+            'argumentation_character_limit': (
+                'Limite de caracteres para "Explore sua argumentação"'
+            ),
             'active': 'Ativo',
+        }
+        help_texts = {
+            'argumentation_character_limit': (
+                'Informe um valor entre 1 e 100.000 caracteres. '
+                'Respostas existentes não serão cortadas automaticamente.'
+            ),
+        }
+        widgets = {
+            'argumentation_character_limit': forms.NumberInput(
+                attrs={'min': 1, 'max': 100000}
+            ),
         }
 
 

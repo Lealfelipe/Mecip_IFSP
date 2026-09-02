@@ -1,5 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from mecip.forms import QuestionnaireForm, QuestionnaireSectionForm, QuestionForm, QuestionAnswerOptionFormSet
+from mecip.forms import (
+    QuestionnaireForm,
+    QuestionnaireSectionForm,
+    QuestionForm,
+    QuestionAnswerOptionFormSet,
+)
 from django.urls import reverse
 from mecip.models import Questionnaire, QuestionnaireSection, Question
 from django.contrib import messages

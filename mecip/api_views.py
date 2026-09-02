@@ -26,6 +26,7 @@ from mecip.serializers import (
     QuestionnaireSerializer,
     ReportSerializer,
 )
+from mecip.validators import normalize_text_line_endings
 
 
 class LoginAPIView(APIView):
@@ -147,9 +148,27 @@ class QuestionnaireViewSet(viewsets.ModelViewSet):
             pk=serializer.validated_data['question'],
             section__questionnaire=questionnaire,
         )
+        free_text = normalize_text_line_endings(
+            serializer.validated_data.get('free_text', '')
+        )
+
+        if len(free_text) > questionnaire.argumentation_character_limit:
+            return Response(
+                {
+                    'free_text': [
+                        (
+                            'A argumentação não pode ultrapassar '
+                            f'{questionnaire.argumentation_character_limit} '
+                            'caracteres.'
+                        ),
+                    ],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         answer, _ = ReportQuestionAnswer.objects.get_or_create(report=report, question=question)
         answer.answer = serializer.validated_data.get('answer', '')
-        answer.free_text = serializer.validated_data.get('free_text', '')
+        answer.free_text = free_text
 
         option_id = serializer.validated_data.get('selected_answer_option')
         if option_id:

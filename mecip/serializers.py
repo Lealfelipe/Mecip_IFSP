@@ -71,7 +71,15 @@ class ReportSerializer(serializers.ModelSerializer):
 class QuestionnaireSerializer(serializers.ModelSerializer):
     class Meta:
         model = Questionnaire
-        fields = ('id', 'name', 'description', 'campus', 'active', 'created_date')
+        fields = (
+            'id',
+            'name',
+            'description',
+            'campus',
+            'active',
+            'argumentation_character_limit',
+            'created_date',
+        )
         read_only_fields = ('id', 'created_date')
 
 

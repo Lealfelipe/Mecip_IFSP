@@ -11,6 +11,7 @@
         enctype="multipart/form-data"
         >
         {% csrf_token %}
+        {{ form.non_field_errors }}
 
         <div class="form-content">
             {% for field in form %}
@@ -50,10 +51,14 @@
         <div class="form-content">
             <h3>Alternativas</h3>
             {{ answer_option_formset.management_form }}
+            {{ answer_option_formset.management_form.errors }}
+            {{ answer_option_formset.non_form_errors }}
             <div id="answer-options-formset">
             {% for option_form in answer_option_formset %}
                 <div class="form-group">
                     {{ option_form.id }}
+                    {{ option_form.id.errors }}
+                    {{ option_form.non_field_errors }}
                     <label>{{ option_form.answer_value.label }}</label>
                     {{ option_form.answer_value }}
                     {{ option_form.answer_value.errors }}
@@ -121,7 +126,7 @@
         });
     </script>
 
-    <div class="question-types-panel">
+    {% comment %} <div class="question-types-panel">
         <h3>Tipos de Perguntas DisponÃ­veis</h3>
         <ul>
             <li><strong>Texto:</strong> Campo de texto simples (uma linha)</li>
@@ -129,6 +134,6 @@
             <li><strong>Sim/NÃ£o:</strong> OpÃ§Ãµes binÃ¡rias (Sim ou NÃ£o)</li>
             <li><strong>MÃºltipla Escolha:</strong> VÃ¡rias opÃ§Ãµes para selecionar uma</li>
         </ul>
-    </div>
+    </div> {% endcomment %}
 
 {% endblock content %}

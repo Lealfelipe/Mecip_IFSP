@@ -264,6 +264,7 @@ def test_coordenador_cria_e_edita_questionario_secao_e_pergunta(
             "name": "Questionario Web",
             "description": "Criado pela view",
             "campus": campus.id,
+            "argumentation_character_limit": "1500",
             "active": "on",
         },
     )
@@ -273,6 +274,7 @@ def test_coordenador_cria_e_edita_questionario_secao_e_pergunta(
     assert "Questionario cadastrado com sucesso" in response_messages(
         response
     )
+    assert questionnaire.argumentation_character_limit == 1500
 
     response = client.post(
         reverse(
@@ -283,6 +285,7 @@ def test_coordenador_cria_e_edita_questionario_secao_e_pergunta(
             "name": "Questionario Web Atualizado",
             "description": "Atualizado pela view",
             "campus": campus.id,
+            "argumentation_character_limit": "750",
             "active": "on",
         },
     )
@@ -290,6 +293,7 @@ def test_coordenador_cria_e_edita_questionario_secao_e_pergunta(
 
     assert response.status_code == 302
     assert questionnaire.name == "Questionario Web Atualizado"
+    assert questionnaire.argumentation_character_limit == 750
 
     response = client.post(
         reverse(
@@ -379,6 +383,10 @@ def test_view_nao_cria_choice_sem_alternativa(
     )
 
     assert response.status_code == 200
+    assert (
+        "Perguntas de múltipla escolha exigem ao menos uma alternativa."
+        in response.content.decode()
+    )
     assert not Question.objects.filter(
         section=section,
         text="Choice sem alternativa",
@@ -431,6 +439,10 @@ def test_view_nao_exclui_todas_as_alternativas_na_edicao(
     multiple_choice_question.refresh_from_db()
 
     assert response.status_code == 200
+    assert (
+        "Perguntas de múltipla escolha exigem ao menos uma alternativa."
+        in response.content.decode()
+    )
     assert multiple_choice_question.text == original_text
     assert QuestionAnswerOption.objects.filter(
         question=multiple_choice_question

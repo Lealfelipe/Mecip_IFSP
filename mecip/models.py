@@ -1,6 +1,9 @@
+import uuid
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.urls import reverse
 from django.utils import timezone
 from mecip.validators import normalize_team_name
 
@@ -51,6 +54,13 @@ class Questionnaire(models.Model):
     name = models.CharField(max_length=250)
     description = models.TextField(blank=True)
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, null=True, blank=True)
+    argumentation_character_limit = models.PositiveIntegerField(
+        default=2000,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(100000),
+        ],
+    )
     created_date = models.DateTimeField(default=timezone.now)
     active = models.BooleanField(default=True)
 
@@ -133,6 +143,11 @@ class ReportQuestionAnswer(models.Model):
 
 
 class ReferenceAttachment(models.Model):
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+    )
     name = models.CharField(max_length=250)
     file = models.FileField(upload_to='reference_attachments/')
     description = models.TextField(blank=True)
@@ -145,8 +160,20 @@ class ReferenceAttachment(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    @property
+    def public_path(self):
+        return reverse(
+            'mecip:public_reference_attachment',
+            args=(self.public_id,),
+        )
+
 
 class Attachments(models.Model):
+    public_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+    )
     answer = models.ForeignKey(
         ReportQuestionAnswer,
         on_delete=models.CASCADE,
@@ -193,6 +220,15 @@ class Attachments(models.Model):
     def file_url(self):
         attachment_file = self.attachment_file
         return attachment_file.url if attachment_file else ''
+
+    @property
+    def public_path(self):
+        if self.reference_attachment_id:
+            return self.reference_attachment.public_path
+        return reverse(
+            'mecip:public_answer_attachment',
+            args=(self.public_id,),
+        )
 
     def __str__(self) -> str:
         return self.name

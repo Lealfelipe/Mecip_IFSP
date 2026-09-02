@@ -8,10 +8,15 @@
 
     <section class="dashboard-filters dashboard-filters-container">
         <form method="get" class="filters-card" aria-label="Filtros de dashboard">
+            {% if selected_status %}
+                <input type="hidden" name="status" value="{{ selected_status }}">
+            {% endif %}
+            <input type="hidden" name="sort" value="{{ selected_sort }}">
+            <input type="hidden" name="direction" value="{{ selected_direction }}">
             <div class="filters-row">
                 <div class="filter-item">
-                    <label class="form-label small">Campus</label>
-                    <select name="campus" class="form-select">
+                    <label class="form-label small" for="dashboard-campus">Campus</label>
+                    <select id="dashboard-campus" name="campus" class="form-select">
                         <option value="">Todos os campi</option>
                         {% for campus in campuses %}
                             <option value="{{ campus.id }}" {% if selected_campus == campus.id|stringformat:"s" %}selected{% endif %}>{{ campus.campus_name }}</option>
@@ -20,8 +25,28 @@
                 </div>
 
                 <div class="filter-item">
-                    <label class="form-label small">Equipe</label>
-                    <select name="team" class="form-select">
+                    <label class="form-label small" for="dashboard-course">Curso</label>
+                    <select id="dashboard-course" name="course" class="form-select">
+                        <option value="">Todos os cursos</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}" {% if selected_course == course.id|stringformat:"s" %}selected{% endif %}>{{ course.type_course.type_name_course }} — {{ course.campus.campus_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label class="form-label small" for="dashboard-year">Ano</label>
+                    <select id="dashboard-year" name="year" class="form-select">
+                        <option value="">Todos os anos</option>
+                        {% for year in years %}
+                            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label class="form-label small" for="dashboard-team">Equipe</label>
+                    <select id="dashboard-team" name="team" class="form-select">
                         <option value="">Todas as equipes</option>
                         {% for team in teams %}
                             <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.team_name }}</option>
@@ -39,14 +64,14 @@
 
     <section class="dashboard-kpis">
         <div class="cards-container">
-            <a href="?{% if selected_campus %}&campus={{ selected_campus }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="card-link">
+            <a href="?{{ all_reports_query }}" class="card-link">
                 <div class="card {% if not selected_status %}card-selected{% endif %}">
                     <h2>Todos</h2>
                     <p>{{ total_reports }}</p>
                 </div>
             </a>
             {% for item in status_counts %}
-                <a href="?status={{ item.status }}{% if selected_campus %}&campus={{ selected_campus }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="card-link">
+                <a href="?{{ item.query_string }}" class="card-link">
                     <div class="card {% if selected_status == item.status %}card-selected{% endif %}">
                         <h2>{{ item.status }}</h2>
                         <p>{{ item.count }}</p>
@@ -83,13 +108,28 @@
                 <caption class="table-caption">{% if selected_status %}Relatórios: {{ selected_status }}{% else %}Relatórios: Todos{% endif %}</caption>
                 <thead>
                     <tr class="table-row table-row-header">
-                        <th class="table-header">Curso</th>
+                        <th class="table-header">
+                            <a class="table-sort-link" href="?{{ course_sort_query }}">
+                                Curso
+                                <span aria-hidden="true">{% if selected_sort == 'course' %}{% if selected_direction == 'asc' %}↑{% else %}↓{% endif %}{% else %}↕{% endif %}</span>
+                            </a>
+                        </th>
                         <th class="table-header">Campus</th>
-                        <th class="table-header table-year">Ano</th>
+                        <th class="table-header table-year">
+                            <a class="table-sort-link" href="?{{ year_sort_query }}">
+                                Ano
+                                <span aria-hidden="true">{% if selected_sort == 'year' %}{% if selected_direction == 'asc' %}↑{% else %}↓{% endif %}{% else %}↕{% endif %}</span>
+                            </a>
+                        </th>
                         <th class="table-header">Cidade Campus</th>
                         <th class="table-header">Equipe</th>
                         <th class="table-header">Status</th>
-                        <th class="table-header">Criado em</th>
+                        <th class="table-header">
+                            <a class="table-sort-link" href="?{{ created_sort_query }}">
+                                Criado em
+                                <span aria-hidden="true">{% if selected_sort == 'created' %}{% if selected_direction == 'asc' %}↑{% else %}↓{% endif %}{% else %}↕{% endif %}</span>
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>

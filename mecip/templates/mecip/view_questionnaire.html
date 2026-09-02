@@ -112,7 +112,7 @@
                             <td class="table-cel">
                                 {% if answer.attachments.exists %}
                                     {% for attachment in answer.attachments.all %}
-                                        <a class="table-link" href="{{ attachment.file_url }}" target="_blank" rel="noopener noreferrer">
+                                        <a class="table-link" href="{{ attachment.public_path }}" target="_blank" rel="noopener noreferrer">
                                             {{ attachment.name }}
                                         </a>{% if not forloop.last %}<br>{% endif %}
                                     {% endfor %}

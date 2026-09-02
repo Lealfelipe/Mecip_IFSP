@@ -14,6 +14,7 @@ from mecip.permissions import (
     can_manage_records,
     can_view_report_questionnaire,
 )
+from mecip.validators import normalize_text_line_endings
 
 @access_required(can_manage_records)
 def create_report(request):
@@ -152,6 +153,9 @@ def answer_questionnaire(request, report_id):
     current_index = int(request.GET.get('pergunta', 1) or 1)
     current_index = max(1, min(current_index, total_questions or 1))
     current_answer = answers_list[current_index - 1] if total_questions else None
+    argumentation_character_limit = (
+        report.questionnaire.argumentation_character_limit
+    )
     reference_attachments = ReferenceAttachment.objects.filter(active=True).order_by('name')
     question_steps = [
         {
@@ -178,7 +182,50 @@ def answer_questionnaire(request, report_id):
             current_answer.selected_answer_option = None
             current_answer.answer = request.POST.get(f'answer_{current_answer.id}', '').strip()
 
-        current_answer.free_text = request.POST.get(f'free_text_{current_answer.id}', '').strip()
+        submitted_free_text = normalize_text_line_endings(
+            request.POST.get(
+                f'free_text_{current_answer.id}',
+                '',
+            )
+        ).strip()
+
+        if len(submitted_free_text) > argumentation_character_limit:
+            current_answer.free_text = submitted_free_text
+            attachment_formset = AttachmentFormSet(
+                request.POST,
+                request.FILES,
+                instance=current_answer,
+                prefix=f'attachments_{current_answer.id}',
+            )
+            messages.error(
+                request,
+                (
+                    'A argumentação não pode ultrapassar '
+                    f'{argumentation_character_limit} caracteres.'
+                ),
+            )
+            context = {
+                'report': report,
+                'answer': current_answer,
+                'attachment_formset': attachment_formset,
+                'reference_attachments': reference_attachments,
+                'current_index': current_index,
+                'total_questions': total_questions,
+                'previous_index': current_index - 1,
+                'next_index': current_index + 1,
+                'has_previous': current_index > 1,
+                'has_next': current_index < total_questions,
+                'question_steps': question_steps,
+                'argumentation_character_limit': argumentation_character_limit,
+                'site_title': 'Responder Questionario',
+            }
+            return render(
+                request,
+                'mecip/answer_questionnaire.html',
+                context,
+            )
+
+        current_answer.free_text = submitted_free_text
         current_answer.save()
 
         attachment_formset = AttachmentFormSet(
@@ -218,6 +265,7 @@ def answer_questionnaire(request, report_id):
                 'has_previous': current_index > 1,
                 'has_next': current_index < total_questions,
                 'question_steps': question_steps,
+                'argumentation_character_limit': argumentation_character_limit,
                 'site_title': 'Responder Questionario',
             }
             messages.error(request, 'Erro ao salvar anexos.')
@@ -258,6 +306,7 @@ def answer_questionnaire(request, report_id):
         'has_previous': current_index > 1,
         'has_next': current_index < total_questions,
         'question_steps': question_steps,
+        'argumentation_character_limit': argumentation_character_limit,
         'site_title': 'Responder Questionario',
     }
     return render(request, 'mecip/answer_questionnaire.html', context)

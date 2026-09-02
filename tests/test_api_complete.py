@@ -650,6 +650,64 @@ def test_equipe_responde_com_alternativa_e_persiste_criterio(
     assert answer.free_text == "Argumentacao da equipe"
 
 
+def test_api_rejeita_argumentacao_acima_do_limite(
+    authenticate_api_client,
+    team_user,
+    questionnaire,
+    report,
+    text_question,
+):
+    questionnaire.argumentation_character_limit = 10
+    questionnaire.save(update_fields=('argumentation_character_limit',))
+    client = authenticate_api_client(team_user)
+
+    response = client.post(
+        f'/api/v1/questionarios/{questionnaire.id}/responder/',
+        {
+            'report': report.id,
+            'question': text_question.id,
+            'free_text': 'Onze letras',
+        },
+        format='json',
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'free_text' in response.data
+    assert not ReportQuestionAnswer.objects.filter(
+        report=report,
+        question=text_question,
+    ).exists()
+
+
+def test_api_aceita_argumentacao_no_limite_exato(
+    authenticate_api_client,
+    team_user,
+    questionnaire,
+    report,
+    text_question,
+):
+    questionnaire.argumentation_character_limit = 10
+    questionnaire.save(update_fields=('argumentation_character_limit',))
+    client = authenticate_api_client(team_user)
+
+    response = client.post(
+        f'/api/v1/questionarios/{questionnaire.id}/responder/',
+        {
+            'report': report.id,
+            'question': text_question.id,
+            'free_text': 'Linha 1\r\nxx',
+        },
+        format='json',
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert ReportQuestionAnswer.objects.filter(
+        report=report,
+        question=text_question,
+        free_text='Linha 1\nxx',
+    ).exists()
+
+
 def test_resposta_rejeita_pergunta_de_outro_questionario(
     authenticate_api_client,
     team_user,

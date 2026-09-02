@@ -221,6 +221,20 @@
     transition: color var(--transition-fast) ease-in-out;
     text-decoration: none;
   }
+
+  .table-sort-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .table-sort-link:hover,
+  .table-sort-link:focus-visible {
+    color: var(--link-green-color);
+    text-decoration: underline;
+  }
   
 .table-link:hover {
     color: var(--clr-black-text)
@@ -1279,6 +1293,33 @@ textarea:focus {
     top: 20px;
 }
 
+.questionnaire-steps-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8dee8;
+    border-radius: 50%;
+    background: #fff;
+    color: #52677a;
+    cursor: pointer;
+}
+
+.questionnaire-steps-toggle:hover {
+    color: #21325b;
+    border-color: #c7d2fe;
+}
+
+.questionnaire-steps-toggle i {
+    transition: transform 0.2s ease;
+}
+
+.questionnaire-steps-toggle[aria-expanded="false"] i {
+    transform: rotate(180deg);
+}
+
 .wizard-steps {
     list-style: none;
     margin: 24px 0 0;
@@ -1440,6 +1481,46 @@ textarea:focus {
     margin-top: 20px;
 }
 
+.character-counter-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.character-counter,
+.character-limit-notice {
+    color: #677788;
+    font-weight: 600;
+}
+
+.character-counter {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.free-text-section.is-warning textarea {
+    border-color: #d97706;
+    background-color: #fffbeb;
+    box-shadow: 0 0 0 0.2rem rgba(217, 119, 6, 0.12);
+}
+
+.free-text-section.is-warning .character-counter,
+.free-text-section.is-warning .character-limit-notice {
+    color: #b45309;
+}
+
+.free-text-section.is-limit-exceeded textarea {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+    box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.12);
+}
+
+.free-text-section.is-limit-exceeded .character-counter,
+.free-text-section.is-limit-exceeded .character-limit-notice {
+    color: #b91c1c;
+}
+
 .attachment-section {
     margin-top: 24px;
     padding-top: 20px;
@@ -1512,6 +1593,25 @@ textarea:focus {
 .attachment-icon-btn:hover {
     color: #21325b;
     border-color: #c7d2fe;
+}
+
+.attachment-copy-btn.is-copy-success,
+.attachment-copy-btn.is-copy-success:hover {
+    color: #188038;
+    border-color: #a7d7b0;
+    background: #eefbf1;
+}
+
+.attachment-copy-btn.is-copy-error,
+.attachment-copy-btn.is-copy-error:hover {
+    color: #b91c1c;
+    border-color: #f5c2c7;
+    background: #fff5f5;
+}
+
+.attachment-copy-alert {
+    max-width: none;
+    margin: 0 0 10px;
 }
 
 .attachment-icon-danger:hover {
@@ -1787,6 +1887,21 @@ textarea:focus {
 
     .questionnaire-steps {
         position: static;
+    }
+
+    .questionnaire-steps-header {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+
+    .questionnaire-steps-header h2 {
+        margin: 0;
+    }
+
+    .questionnaire-steps-toggle {
+        display: inline-flex;
     }
 }
 

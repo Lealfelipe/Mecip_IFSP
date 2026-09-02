@@ -471,6 +471,7 @@ def test_questionnaire_form_salva_dados_validos(campus):
             "name": "Questionario do formulario",
             "description": "Descricao",
             "campus": campus.id,
+            "argumentation_character_limit": 750,
             "active": "on",
         }
     )
@@ -480,7 +481,32 @@ def test_questionnaire_form_salva_dados_validos(campus):
     questionnaire = form.save()
 
     assert questionnaire.campus == campus
+    assert questionnaire.argumentation_character_limit == 750
     assert questionnaire.active
+
+
+@pytest.mark.parametrize(
+    'invalid_limit',
+    (0, 100001),
+    ids=('menor-que-um', 'maior-que-cem-mil'),
+)
+def test_form_limite_argumentacao_rejeita_valores_invalidos(
+    questionnaire,
+    invalid_limit,
+):
+    form = QuestionnaireForm(
+        data={
+            'name': questionnaire.name,
+            'description': questionnaire.description,
+            'campus': questionnaire.campus_id,
+            'argumentation_character_limit': invalid_limit,
+            'active': 'on',
+        },
+        instance=questionnaire,
+    )
+
+    assert not form.is_valid()
+    assert 'argumentation_character_limit' in form.errors
 
 
 def test_reference_attachment_form_salva_upload_valido(

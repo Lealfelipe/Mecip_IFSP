@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.paginator import Paginator
 from django.contrib import messages
@@ -6,7 +7,7 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from io import BytesIO
-from mecip.models import Report, Campus, Team
+from mecip.models import Report, Campus, Course, Team
 from mecip.permissions import (
     access_denied_response,
     can_view_all_records,
@@ -15,31 +16,100 @@ from mecip.permissions import (
 
 
 def dashboard(request):
-    base_reports = Report.objects.all()
+    accessible_reports = Report.objects.all()
 
     campus_id = request.GET.get('campus')
+    course_id = request.GET.get('course')
+    year_filter = request.GET.get('year')
     team_id = request.GET.get('team')
     status_filter = request.GET.get('status')
-
-    if campus_id:
-        base_reports = base_reports.filter(campus_id=campus_id)
-    if team_id:
-        base_reports = base_reports.filter(assigned_team_id=team_id)
+    sort_field = request.GET.get('sort', 'created')
+    sort_direction = request.GET.get('direction', 'desc')
 
     if request.user.is_authenticated and not can_view_all_records(request.user):
         user_teams = request.user.teams.all()
-        base_reports = base_reports.filter(assigned_team__in=user_teams)
+        accessible_reports = accessible_reports.filter(
+            assigned_team__in=user_teams
+        )
     elif not request.user.is_authenticated:
-        base_reports = Report.objects.none()
+        accessible_reports = Report.objects.none()
+
+    courses = (
+        Course.objects
+        .filter(relatorios__in=accessible_reports)
+        .select_related('type_course', 'campus')
+        .distinct()
+        .order_by('type_course__type_name_course', 'campus__campus_name')
+    )
+    years = (
+        accessible_reports.order_by()
+        .values_list('year', flat=True)
+        .distinct()
+        .order_by('-year')
+    )
+
+    base_reports = accessible_reports
+    if campus_id:
+        base_reports = base_reports.filter(campus_id=campus_id)
+    if course_id:
+        base_reports = base_reports.filter(course_id=course_id)
+    if year_filter:
+        base_reports = base_reports.filter(year=year_filter)
+    if team_id:
+        base_reports = base_reports.filter(assigned_team_id=team_id)
 
     reports = base_reports
     if status_filter:
         reports = reports.filter(status=status_filter)
 
-    status_counts = base_reports.values('status').annotate(count=Count('id')).order_by('-count')
+    sort_fields = {
+        'course': 'course__type_course__type_name_course',
+        'year': 'year',
+        'created': 'created_date',
+    }
+    if sort_field not in sort_fields:
+        sort_field = 'created'
+    if sort_direction not in ('asc', 'desc'):
+        sort_direction = 'desc'
+
+    order_prefix = '' if sort_direction == 'asc' else '-'
+    reports = reports.select_related(
+        'course__type_course',
+        'campus',
+        'assigned_team',
+    ).order_by(
+        f'{order_prefix}{sort_fields[sort_field]}',
+        'id',
+    )
+
+    status_counts = list(
+        base_reports.values('status')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
     total_reports = base_reports.count()
     campuses = Campus.objects.order_by('campus_name')
     teams = Team.objects.order_by('team_name')
+
+    def dashboard_query(**changes):
+        parameters = request.GET.copy()
+        for key, value in changes.items():
+            if value is None:
+                parameters.pop(key, None)
+            else:
+                parameters[key] = value
+        return parameters.urlencode()
+
+    for item in status_counts:
+        item['query_string'] = dashboard_query(status=item['status'])
+
+    def sort_query(field):
+        next_direction = (
+            'desc'
+            if sort_field == field and sort_direction == 'asc'
+            else 'asc'
+        )
+        return dashboard_query(sort=field, direction=next_direction)
 
     # Dados para o gráfico de pizza
     status_labels = [item['status'] for item in status_counts]
@@ -50,10 +120,20 @@ def dashboard(request):
         'status_counts': status_counts,
         'total_reports': total_reports,
         'campuses': campuses,
+        'courses': courses,
+        'years': years,
         'teams': teams,
         'selected_campus': campus_id,
+        'selected_course': course_id,
+        'selected_year': year_filter,
         'selected_team': team_id,
         'selected_status': status_filter,
+        'selected_sort': sort_field,
+        'selected_direction': sort_direction,
+        'all_reports_query': dashboard_query(status=None),
+        'course_sort_query': sort_query('course'),
+        'year_sort_query': sort_query('year'),
+        'created_sort_query': sort_query('created'),
         'status_labels': status_labels,
         'status_data': status_data,
         'site_title': 'Dashboard'
@@ -149,8 +229,11 @@ def _build_report_pdf(report: Report, request):
 
     for answer in answers:
         for attachment in answer.attachments.all():
-            attachment.pdf_url = request.build_absolute_uri(
-                attachment.file_url
+            public_path = attachment.public_path
+            attachment.pdf_url = (
+                f'{settings.PUBLIC_BASE_URL}{public_path}'
+                if settings.PUBLIC_BASE_URL
+                else request.build_absolute_uri(public_path)
             )
 
     html = render_to_string(

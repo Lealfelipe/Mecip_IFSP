@@ -16,6 +16,9 @@ class LoginRequiredMiddleware:
         is_public_request = (
             request.path_info == login_url
             or request.path_info.startswith('/api/v1/')
+            or request.path_info.startswith('/a/r/')
+            or request.path_info.startswith('/a/d/')
+            or request.path_info.startswith('/anexos/publicos/')
             or request.path_info.startswith(static_url)
         )
 

@@ -2,6 +2,7 @@ import pytest
 from django.db import IntegrityError, transaction
 
 from mecip.models import Attachments
+from mecip.url_converters import encode_public_id
 
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
@@ -24,6 +25,7 @@ def test_anexo_catalogado_armazena_referencia_sem_upload_direto(
         == reference_attachment.file.name
     )
     assert attachment.file_url == reference_attachment.file.url
+    assert attachment.public_path == reference_attachment.public_path
 
 
 def test_upload_direto_resolve_arquivo_sem_anexo_catalogado(answer):
@@ -40,6 +42,7 @@ def test_upload_direto_resolve_arquivo_sem_anexo_catalogado(answer):
     assert attachment.file_url == (
         "/media/answer_attachments/upload.pdf"
     )
+    assert encode_public_id(attachment.public_id) in attachment.public_path
 
 
 def test_anexo_sem_arquivo_ou_referencia_viola_restricao(answer):

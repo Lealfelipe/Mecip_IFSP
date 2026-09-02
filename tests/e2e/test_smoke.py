@@ -95,3 +95,46 @@ def test_tom_select_carrega_localmente_sem_rede_externa(
     )
     assert browser_diagnostics.external_requests == []
     assert browser_diagnostics.javascript_errors == []
+
+
+def test_indicadores_podem_ser_expandidos_em_tela_mobile(
+    report,
+    text_question,
+    team_page,
+    e2e_base_url,
+):
+    team_page.set_viewport_size({
+        'width': 768,
+        'height': 900,
+    })
+
+    response = team_page.goto(
+        (
+            f'{e2e_base_url}/relatorio/{report.id}/'
+            'responder/'
+        ),
+        wait_until='domcontentloaded',
+    )
+
+    assert response is not None
+    assert response.ok
+
+    toggle = team_page.locator(
+        '[data-questionnaire-steps-toggle]'
+    )
+    steps = team_page.locator('#questionnaire-step-list')
+
+    expect(toggle).to_be_visible()
+    expect(toggle).to_have_attribute(
+        'aria-label',
+        'Expandir indicadores',
+    )
+    expect(steps).to_be_hidden()
+
+    toggle.click()
+
+    expect(steps).to_be_visible()
+    expect(toggle).to_have_attribute(
+        'aria-label',
+        'Recolher indicadores',
+    )

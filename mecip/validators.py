@@ -7,6 +7,10 @@ from django.core.exceptions import ValidationError
 MAXIMUM_PDF_SIZE = 10_000_000
 
 
+def normalize_text_line_endings(value):
+    return (value or '').replace('\r\n', '\n').replace('\r', '\n')
+
+
 def normalize_team_name(value):
     decomposed_value = unicodedata.normalize("NFKD", value or "")
     return "".join(

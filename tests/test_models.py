@@ -147,6 +147,7 @@ def test_modelos_aplicam_valores_padrao(course, campus):
 
     assert questionnaire.description == ""
     assert questionnaire.active
+    assert questionnaire.argumentation_character_limit == 2000
     assert section.order == 0
     assert question.indicator == ""
     assert question.special_condition == ""
