@@ -8,6 +8,11 @@ app_name = 'mecip'
 
 urlpatterns = [
     path(
+        'categoria/criar/',
+        views.create_course_category,
+        name='create_course_category',
+    ),
+    path(
         'a/r/<public_id:public_id>/',
         views.public_reference_attachment,
         name='public_reference_attachment',
@@ -34,13 +39,13 @@ urlpatterns = [
 
     # Criar Campus
     path('campus/<int:campus_id>/', views.campus, name='campus'),
-    path('campus/create/', views.create, name='create'),
+    path('campus/criar/', views.create, name='create'),
     path('campus/<int:campus_id>/update', views.update, name='update'),
 
     # Criar Curso
     path('curso/', views.index_course, name='index_course'),
     path('curso/<int:course_id>/', views.course, name='course'),
-    path('curso/create/', views.create_course, name='create_course'),
+    path('curso/criar/', views.create_course, name='create_course'),
     path('curso/<int:course_id>/update', views.update_course, name='update_course'),
 
     # Criar Tipo Curso

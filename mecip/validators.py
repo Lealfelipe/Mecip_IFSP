@@ -23,6 +23,16 @@ def normalize_team_name(value):
     ).casefold()
 
 
+def normalize_course_category_name(value):
+    decomposed = unicodedata.normalize('NFKD', value or '')
+    without_accents = ''.join(
+        character
+        for character in decomposed
+        if not unicodedata.combining(character)
+    )
+    return ' '.join(without_accents.split()).casefold()
+
+
 def validate_pdf_upload(uploaded_file):
     if Path(uploaded_file.name).suffix != ".pdf":
         raise ValidationError(

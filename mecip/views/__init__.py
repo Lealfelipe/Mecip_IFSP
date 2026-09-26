@@ -13,3 +13,4 @@ from .questionnaire_form import *
 from .questionnaire_view import *
 from .reference_attachment_form import *
 from .public_attachment import *
+from .course_category_form import create_course_category

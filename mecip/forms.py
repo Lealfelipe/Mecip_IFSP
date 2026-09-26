@@ -1,6 +1,8 @@
 from typing import Any
+from mecip.models import Categorie_Course
 from mecip.models import Campus, Course, Report, Type_Course, Team, Questionnaire, QuestionnaireSection, Question, ReportQuestionAnswer, Attachments, QuestionAnswerOption, ReferenceAttachment
 from mecip.validators import validate_pdf_upload
+from mecip.validators import normalize_course_category_name
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
@@ -470,6 +472,31 @@ class ReportQuestionAnswerForm(forms.ModelForm):
             'answer': forms.Textarea(attrs={'rows': 3}),
             'free_text': forms.Textarea(attrs={'rows': 3}),
         }
+
+
+class CourseCategoryForm(forms.ModelForm):
+    class Meta:
+        model = Categorie_Course
+        fields = ('categorie',)
+        labels = {'categorie': 'Nome da categoria'}
+
+    def clean_categorie(self):
+        categorie = self.cleaned_data['categorie']
+        normalized_name = normalize_course_category_name(categorie)
+        existing_names = (
+            Categorie_Course.objects
+            .exclude(pk=self.instance.pk)
+            .values_list('categorie', flat=True)
+        )
+        if any(
+            normalize_course_category_name(name) == normalized_name
+            for name in existing_names.iterator()
+        ):
+            raise ValidationError(
+                'Já existe uma categoria de curso com esse nome.',
+                code='duplicate_category',
+            )
+        return categorie
 
 
 class TypeCourseForm(forms.ModelForm):

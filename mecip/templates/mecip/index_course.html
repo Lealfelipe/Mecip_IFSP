@@ -10,6 +10,7 @@
             <thead class="thead-light">
                 <tr class="table-row table-row-header">
                     <th scope="col" class="table-header">Nome Curso</th>
+                    <th scope="col" class="table-header">Nível de formação</th>
                     <th scope="col" class="table-header">Descrição</th>
                     <th scope="col" class="table-header">Campus</th>
                     <th scope="col" class="table-header">Cidade</th>
@@ -23,6 +24,11 @@
                             <a class="table-link" 
                             href="{% url "mecip:course" course.id %}">
                                 {{ course.type_course }}
+                            </a>
+                        </td>
+                        <td class="table-cel">
+                            <a class="table-link" href="{% url 'mecip:course' course.id %}">
+                                {{ course.type_course.type_categorie.categorie }}
                             </a>
                         </td>
                         <td class="table-cel">

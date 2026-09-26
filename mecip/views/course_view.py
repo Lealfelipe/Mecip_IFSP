@@ -3,8 +3,11 @@ from django.core.paginator import Paginator
 from mecip.models import Course
 
 def index_course(request):
-    course = Course.objects \
+    course = (
+        Course.objects
+        .select_related('type_course__type_categorie', 'campus')
         .order_by('-id')
+    )
     paginator = Paginator(course, 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)

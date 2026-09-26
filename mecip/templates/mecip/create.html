@@ -47,6 +47,36 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const addCreationOption = (selector, label, url) => {
+            const field = document.querySelector(selector);
+            if (!field) return;
+
+            let previousValue = field.value;
+            field.add(new Option(label, '__create_new__'), 1);
+            field.addEventListener('change', function() {
+                if (this.value === '__create_new__') {
+                    this.value = previousValue;
+                    window.location.assign(url);
+                    return;
+                }
+                previousValue = this.value;
+            });
+        };
+
+        {% if request.resolver_match.view_name == 'mecip:create_course' %}
+        addCreationOption(
+            'select[name="type_course"]',
+            'Criar novo curso',
+            "{% url 'mecip:create_type' %}"
+        );
+        {% elif request.resolver_match.view_name == 'mecip:create_type' %}
+        addCreationOption(
+            'select[name="type_categorie"]',
+            'Criar novo nível',
+            "{% url 'mecip:create_course_category' %}"
+        );
+        {% endif %}
+
         const courseField = document.querySelector('select[name="type_course"]');
         const campusField = document.querySelector('select[name="campus"]');
         const questionnaireField = document.querySelector('select[name="questionnaire"]');
